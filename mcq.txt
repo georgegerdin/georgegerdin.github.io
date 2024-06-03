@@ -1,0 +1,48 @@
+[
+   {
+      "question":"Vilket påstående om körfält är riktig?",
+      "options":[
+         "Ett körfält behöver inte anges med vägmarkering",
+         "Vägrenen är ett körfält",
+         "Ett körfält måste alltid anges med markering"
+      ],
+      "answer":[
+         0
+      ]
+   },
+   {
+      "question":"Vad slags körfält finns det?",
+      "options":[
+         "Markerade och icke-markerade",
+         "Dubbelriktade och enkelriktade",
+         "Höger- och vänsterfälten"
+      ],
+      "answer":[
+         0
+      ]
+   },
+   {
+      "question":"Vad är syftet med att markera körfält på vägen?",
+      "options":[
+         "För att orsaka olyckor",
+         "För att underlätta godtransporter",
+         "För att vägleda trafikanter",
+         "För att dekorera vägen"
+      ],
+      "answer":[
+         2
+      ]
+   },
+   {
+      "question":"Vilken färg används vanligtvis för att markera körfält?",
+      "options":[
+         "Blå",
+         "Gul",
+         "Röd",
+         "Vit"
+      ],
+      "answer":[
+         3
+      ]
+   }
+]
