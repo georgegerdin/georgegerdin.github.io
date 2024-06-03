@@ -6,6 +6,11 @@
     .question {
       margin-bottom: 20px;
     }
+    .question-image {
+      max-width: 100%;
+      height: auto;
+      margin-bottom: 10px;
+    }
     .options {
       list-style-type: none;
       padding: 0;
@@ -57,6 +62,15 @@
         const questionText = document.createElement('h3');
         questionText.textContent = `${index + 1}. ${question.question}`;
         questionDiv.appendChild(questionText);
+
+        // Display the question image if provided
+        if (question.image) {
+          const questionImage = document.createElement('img');
+          questionImage.src = question.image;
+          questionImage.classList.add('question-image');
+          questionDiv.appendChild(questionImage);
+        }
+
         const optionsList = document.createElement('ol');
         optionsList.classList.add('options');
 
