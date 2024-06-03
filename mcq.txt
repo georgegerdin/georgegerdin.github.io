@@ -11,7 +11,7 @@
       ]
    },
    {
-      "question":"Vilka slags körfält finns det?",
+      "question":"Vad slags körfält finns det?",
       "options":[
          "Markerade och icke-markerade",
          "Dubbelriktade och enkelriktade",
@@ -25,7 +25,7 @@
       "question":"Vad är syftet med att markera körfält på vägen?",
       "options":[
          "För att orsaka olyckor",
-         "För att underlätta godstransporter",
+         "För att underlätta godtransporter",
          "För att vägleda trafikanter",
          "För att dekorera vägen"
       ],
@@ -44,5 +44,18 @@
       "answer":[
          3
       ]
+   },
+   {
+      "question":"Hur många körfält finns det på bilden?",
+      "options":[
+         "1",
+         "2",
+         "3",
+         "4"
+      ],
+      "answer":[
+         3
+      ],
+      "image": "korfalt.jpeg"
    }
 ]
