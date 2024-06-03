@@ -1,0 +1,22 @@
+[
+   {
+      "question":"Vad är sidkraft?",
+      "options":[
+         "Den kraft som uppstår mellan däck och asfalt när man svänger",
+         "Gravitationskraften",
+         "Det verktyg man lyfter bilen med"
+      ],
+      "answer":[0]
+   },
+   {
+      "question":"Vilket påstående om körfält är riktig?",
+      "options":[
+         "Ett körfält behöver inte anges med vägmarkering",
+         "Vägrenen är ett körfält",
+         "Ett körfält måste alltid anges med markering"
+      ],
+      "answer":[
+         0
+      ]
+   }
+]
