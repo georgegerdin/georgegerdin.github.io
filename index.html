@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Multiple Choice Quiz</title>
+  <style>
+    .question {
+      margin-bottom: 20px;
+    }
+
+    .options {
+      list-style-type: none;
+      padding: 0;
+    }
+
+    .options li {
+      margin-bottom: 5px;
+      cursor: pointer;
+      padding: 5px 10px;
+      border: 1px solid #c9daf8;
+      border-bottom: 2px solid #a1b8e2;
+      border-radius: 4px;
+
+    }
+
+    .correct {
+      border-color: green;
+      background: linear-gradient(to bottom, #d9ffdd, #84e184);
+    }
+
+    .incorrect {
+      border-color: red;
+      background: linear-gradient(to bottom, #ffd9d9, #e18484);
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Multiple Choice Quiz</h1>
+  <div id="quiz"></div>
+
+  <script>
+    // Function to fetch the JSON data from the external file
+    function fetchData() {
+      return fetch('mcq.txt')
+        .then(response => response.text())
+        .then(data => JSON.parse(data));
+    }
+
+    // Function to display the quiz questions
+    function displayQuiz(questions) {
+      const quizContainer = document.getElementById('quiz');
+
+      questions.forEach((question, index) => {
+        const questionDiv = document.createElement('div');
+        questionDiv.classList.add('question');
+
+        const questionText = document.createElement('h3');
+        questionText.textContent = `${index + 1}. ${question.question}`;
+        questionDiv.appendChild(questionText);
+
+        const optionsList = document.createElement('ol');
+        optionsList.classList.add('options');
+        question.options.forEach((option, optionIndex) => {
+          const optionItem = document.createElement('li');
+          optionItem.textContent = option;
+          optionItem.dataset.index = optionIndex; // Store the index as a data attribute
+          optionItem.addEventListener('click', () => showAnswer(optionItem, question.answer));
+          optionsList.appendChild(optionItem);
+        });
+        questionDiv.appendChild(optionsList);
+
+        quizContainer.appendChild(questionDiv);
+      });
+    }
+
+    // Function to show the correct answer
+    function showAnswer(optionItem, correctAnswers) {
+      const optionIndex = parseInt(optionItem.dataset.index);
+      const isCorrect = correctAnswers.includes(optionIndex);
+
+      // Remove existing classes
+      optionItem.classList.remove('correct', 'incorrect');
+
+      // Add the appropriate class based on correctness
+      optionItem.classList.add(isCorrect ? 'correct' : 'incorrect');
+    }
+
+    // Fetch the JSON data and display the quiz
+    fetchData()
+      .then(data => displayQuiz(data))
+      .catch(error => console.error('Error fetching data:', error));
+  </script>
+</body>
+
+</html>
