@@ -50,6 +50,7 @@
     <button id="prevBtn" disabled>Previous</button>
     <button id="nextBtn">Next</button>
   </div>
+  <div id="score"></div>
   <script>
     // Function to shuffle an array
     function shuffleArray(array) {
@@ -105,7 +106,17 @@
           answerMap.set(optionIndex, true);
         }
 
-        optionItem.addEventListener('click', () => showAnswer(optionItem, answerMap));
+        // Add event listener only if the option hasn't been clicked
+        if (!optionItem.classList.contains('clicked')) {
+          const handleClick = () => {
+            optionItem.classList.add('clicked'); // Mark the option as clicked
+            const isCorrect = answerMap.get(optionIndex) || false;
+            showAnswer(optionItem, isCorrect);
+            updateScore(isCorrect);
+            optionItem.removeEventListener('click', handleClick); // Remove the event listener
+          };
+          optionItem.addEventListener('click', handleClick);
+        }
         optionsList.appendChild(optionItem);
       });
       questionDiv.appendChild(optionsList);
@@ -113,13 +124,24 @@
     }
 
     // Function to show the correct answer
-    function showAnswer(optionItem, answerMap) {
-      const optionIndex = parseInt(optionItem.dataset.index);
-      const isCorrect = answerMap.get(optionIndex) || false;
+    function showAnswer(optionItem, isCorrect) {
       // Remove existing classes
       optionItem.classList.remove('correct', 'incorrect');
       // Add the appropriate class based on correctness
       optionItem.classList.add(isCorrect ? 'correct' : 'incorrect');
+    }
+
+    // Function to update the score
+    let correctCount = 0;
+    let incorrectCount = 0;
+    function updateScore(isCorrect) {
+      const scoreContainer = document.getElementById('score');
+      if (isCorrect) {
+        correctCount++;
+      } else {
+        incorrectCount++;
+      }
+      scoreContainer.textContent = `Correct: ${correctCount}, Incorrect: ${incorrectCount}`;
     }
 
     // Get the file parameter from the URL
