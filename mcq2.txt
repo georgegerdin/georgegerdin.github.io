@@ -1,22 +1,161 @@
 [
-   {
-      "question":"Vad är sidkraft?",
-      "options":[
-         "Den kraft som uppstår mellan däck och asfalt när man svänger",
-         "Gravitationskraften",
-         "Det verktyg man lyfter bilen med"
-      ],
-      "answer":[0]
-   },
-   {
-      "question":"Vilket påstående om körfält är riktig?",
-      "options":[
-         "Ett körfält behöver inte anges med vägmarkering",
-         "Vägrenen är ett körfält",
-         "Ett körfält måste alltid anges med markering"
-      ],
-      "answer":[
-         0
-      ]
-   }
+    {
+        "question": "Hur påverkas din körförmåga i allmänhet av stress?",
+        "options": [
+            {
+                "text": "Stress försämrar alltid körförmågan"
+            },
+            {
+                "text": "Mycket stress kan försämra körförmågan"
+            },
+            {
+                "text": "Stress påverkar inte körförmågan"
+            }
+        ],
+        "answer": [
+            1
+        ]
+    },
+    {
+        "question": "Vilken typ av olyckor drabbar äldre förare oftare än andra förare?",
+        "options": [
+            {
+                "text": "Singelolyckor"
+            },
+            {
+                "text": "Olyckor där föraren är alkoholpåverkad"
+            },
+            {
+                "text": "Omkörningsolyckor"
+            },
+            {
+                "text": "Korsningsolyckor"
+            }
+        ],
+        "answer": [
+            3
+        ]
+    },
+    {
+        "question": "Vad innebär denna skylt?",
+        "options": [
+            {
+                "text": "Det är förbjudet att köra mer än 30 km/h"
+            },
+            {
+                "text": "Det är olämpligt att köra mer än 30 km/h"
+            },
+            {
+                "text": "Påbudshastighet är max 30 km/h"
+            }
+        ],
+        "answer": [
+            1
+        ],
+        "image": "skylt05.png"
+    },
+    {
+        "question": "Var går gränsen för rattfylleri?",
+        "options": [
+            {
+                "text": "0,1 promille"
+            },
+            {
+                "text": "0,2 promille"
+            },
+            {
+                "text": "0,5 promille"
+            },
+            {
+                "text": "1,0 promille"
+            }
+        ],
+        "answer": [
+            1
+        ]
+    },
+    {
+        "question": "Var går gränsen för grovt rattfylleri?",
+        "options": [
+            {
+                "text": "0,2 promille i blodet eller 0,1 mg/liter i utandningsluften"
+            },
+            {
+                "text": "1,0 promille i blodet eller 0,5 mg/liter i utandningsluften"
+            },
+            {
+                "text": "1,5 promille i blodet eller 0,75 mg/liter i utandningsluften"
+            }
+        ],
+        "answer": [
+            1
+        ]
+    },
+    {
+         "question": "Hur påverkar synen om du är alkoholpåverkad?",
+         "options": [
+             {
+                 "text": "Synskärpan stärks och synfält blir bredare"
+             },
+             {
+                 "text": "Synskärpan minskar och synfält blir bredare"
+             },
+             {
+                 "text": "Synskärpan stärks och synfält blir smalare"
+             },
+             {
+                 "text": "Synskärpan minskar och synfält blir smalare"
+             }
+         ],
+         "answer": [
+             3
+         ]
+     },
+     {
+        "question":"Vilket vägmärke motsvarar en ojämn väg?",
+        "options":[
+           {"text": "", "image": "skylt06.gif"},
+           {"text": "", "image": "skylt07.gif"},
+           {"text": "", "image": "skylt08.gif"},
+           {"text": "", "image": "skylt09.gif"}
+        ],
+        "answer":[
+           2
+        ]
+     },
+      {
+         "question": "En frisk man konsumerar 40-procentig sprit. Hur många cl alkohol förbränner han på en timme?",
+           "options": [
+               { "text": "1 cl" },
+               { "text": "2 cl" },
+               { "text": "3 cl" },
+               { "text": "4 cl" }
+           ],
+           "answer": [
+               1
+           ]
+      },
+      {
+         "question": "En frisk man (70 kg) konsumerar 25 cl 40-procentig sprit. Hur lång tid dröjer det innan kroppen har förbrännt innehållet?",
+           "options": [
+               { "text": "8 timmar" },
+               { "text": "10 timmar" },
+               { "text": "14 timmar" }
+           ],
+           "answer": [
+               2
+           ]
+      },
+      {
+         "question": "Kan man göra något för att påskynda förbränningen av alkohol i kroppen?",
+           "options": [
+               { "text": "Ja, man kan ta en lång promenad" },
+               { "text": "Ja, man kan sova längre" },
+               { "text": "Ja, man kan bada bastu" },
+               { "text": "Nej, man kan inte öka förbränningen" } 
+           ],
+           "answer": [
+               3
+           ]
+      }
 ]
