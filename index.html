@@ -113,7 +113,7 @@
           const handleClick = () => {
             optionItem.classList.add('clicked'); // Mark the option as clicked
             const isCorrect = answerMap.get(optionIndex) || false;
-            showAnswer(optionItem, isCorrect);
+            showAnswer(optionItem, isCorrect, shuffledOptions, answerMap);
             updateScore(isCorrect);
             removeAllEventListeners(optionEventListeners); // Remove all event listeners
           };
@@ -137,11 +137,18 @@
     }
 
     // Function to show the correct answer
-    function showAnswer(optionItem, isCorrect) {
+    function showAnswer(optionItem, isCorrect, shuffledOptions, answerMap) {
       // Remove existing classes
       optionItem.classList.remove('correct', 'incorrect');
       // Add the appropriate class based on correctness
       optionItem.classList.add(isCorrect ? 'correct' : 'incorrect');
+
+      // Reveal the correct answer if the clicked option is incorrect
+      if (!isCorrect) {
+        const correctOptionIndex = shuffledOptions.findIndex(option => answerMap.get(shuffledOptions.indexOf(option)));
+        const correctOptionItem = document.querySelector(`.options li:nth-child(${correctOptionIndex + 1})`);
+        correctOptionItem.classList.add('correct');
+      }
     }
 
     // Function to update the score
