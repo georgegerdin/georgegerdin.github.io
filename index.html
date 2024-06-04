@@ -17,14 +17,25 @@
     .options {
       list-style-type: none;
       padding: 0;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
     }
     .options li {
-      margin-bottom: 5px;
+      margin-bottom: 10px;
       cursor: pointer;
-      padding: 5px 10px;
+      padding: 10px;
       border: 1px solid #c9daf8;
       border-bottom: 2px solid #a1b8e2;
       border-radius: 4px;
+      width: 48%;
+      display: flex;
+      align-items: center;
+    }
+    .options li img {
+      max-width: 50px;
+      max-height: 50px;
+      margin-right: 10px;
     }
     .correct {
       border-color: green;
@@ -87,7 +98,7 @@
         questionDiv.appendChild(questionImage);
       }
 
-      const optionsList = document.createElement('ol');
+      const optionsList = document.createElement('ul');
       optionsList.classList.add('options');
 
       // Shuffle the options array
@@ -100,7 +111,20 @@
 
       shuffledOptions.forEach((option, optionIndex) => {
         const optionItem = document.createElement('li');
-        optionItem.textContent = option;
+        const optionTextContainer = document.createElement('div');
+
+        // Check if the option has an image
+        if (option.image) {
+          const optionImage = document.createElement('img');
+          optionImage.src = option.image;
+          optionItem.appendChild(optionImage);
+        }
+
+        const optionText = document.createElement('span');
+        optionText.textContent = option.text;
+        optionTextContainer.appendChild(optionText);
+        optionItem.appendChild(optionTextContainer);
+
         optionItem.dataset.index = optionIndex; // Store the index as a data attribute
 
         // Update the answerMap with the correct answer index
