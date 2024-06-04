@@ -96,6 +96,8 @@
       // Create a map to store the correct answer indices after shuffling
       const answerMap = new Map();
 
+      const optionEventListeners = []; // Array to store event listeners
+
       shuffledOptions.forEach((option, optionIndex) => {
         const optionItem = document.createElement('li');
         optionItem.textContent = option;
@@ -113,14 +115,25 @@
             const isCorrect = answerMap.get(optionIndex) || false;
             showAnswer(optionItem, isCorrect);
             updateScore(isCorrect);
-            optionItem.removeEventListener('click', handleClick); // Remove the event listener
+            removeAllEventListeners(optionEventListeners); // Remove all event listeners
           };
           optionItem.addEventListener('click', handleClick);
+          optionEventListeners.push(handleClick); // Store the event listener
         }
         optionsList.appendChild(optionItem);
       });
       questionDiv.appendChild(optionsList);
       quizContainer.appendChild(questionDiv);
+    }
+
+    // Function to remove all event listeners
+    function removeAllEventListeners(listeners) {
+      const optionItems = document.querySelectorAll('.options li');
+      optionItems.forEach(item => {
+        listeners.forEach(listener => {
+          item.removeEventListener('click', listener);
+        });
+      });
     }
 
     // Function to show the correct answer
