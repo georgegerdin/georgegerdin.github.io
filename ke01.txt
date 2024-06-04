@@ -1,0 +1,262 @@
+[
+    {
+        "question": "Vad innebär köregenskaper?",
+        "options": [
+            {
+                "text": "Hur bilen upplevs och beter sig på vägen"
+            },
+            {
+                "text": "Köregenskaper handlar enbart om bilens motorprestande"
+            },
+            {
+                "text": "Vilken färg bilen har"
+            },
+            {
+                "text": "Har bra bilen är parkerad"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad av dessa alternativ har inverkan på bilens köregenskaper?",
+        "options": [
+            {
+                "text": "Understyrning"
+            },
+            {
+                "text": "Färg"
+            },
+            {
+                "text": "Polisen"
+            },
+            {
+                "text": "Trafikskolan"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad av dessa alternativ har inverkan på bilens köregenskaper?",
+        "options": [
+            {
+                "text": "Överstyrning"
+            },
+            {
+                "text": "Färg"
+            },
+            {
+                "text": "Polisen"
+            },
+            {
+                "text": "Stora spoilers"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad av dessa alternativ har inverkan på bilens köregenskaper?",
+        "options": [
+            {
+                "text": "Framhjulsdrift"
+            },
+            {
+                "text": "Färg"
+            },
+            {
+                "text": "Antenn"
+            },
+            {
+                "text": "Handledaren"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad av dessa alternativ har inverkan på bilens köregenskaper?",
+        "options": [
+            {
+                "text": "Fyrhjulsdrift"
+            },
+            {
+                "text": "Antenn"
+            },
+            {
+                "text": "Radio"
+            },
+            {
+                "text": "Handledaren"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad av dessa alternativ har inverkan på bilens köregenskaper?",
+        "options": [
+            {
+                "text": "Däcken"
+            },
+            {
+                "text": "Antenn"
+            },
+            {
+                "text": "Domkraften"
+            },
+            {
+                "text": "Skyltar"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad av dessa alternativ har inverkan på bilens köregenskaper?",
+        "options": [
+            {
+                "text": "Stötdämparna"
+            },
+            {
+                "text": "Domkraften"
+            },
+            {
+                "text": "Bakluckan"
+            },
+            {
+                "text": "Trafikskolan"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad av dessa alternativ har inverkan på bilens köregenskaper?",
+        "options": [
+            {
+                "text": "Sidkraft"
+            },
+            {
+                "text": "Vindrutan"
+            },
+            {
+                "text": "Bakluckan"
+            },
+            {
+                "text": "Körkortet"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad av dessa alternativ har inverkan på bilens köregenskaper?",
+        "options": [
+            {
+                "text": "Väder"
+            },
+            {
+                "text": "Vindrutan"
+            },
+            {
+                "text": "Bakluckan"
+            },
+            {
+                "text": "Spoilers"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad av dessa alternativ har inverkan på bilens köregenskaper?",
+        "options": [
+            {
+                "text": "Väglag"
+            },
+            {
+                "text": "Vindrutan"
+            },
+            {
+                "text": "Bakluckan"
+            },
+            {
+                "text": "Domkraften"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad av detta är en yttre faktor som påverkar köregenskaper?",
+        "options": [
+            {
+                "text": "Väder"
+            },
+            {
+                "text": "Chassi"
+            },
+            {
+                "text": "Styrservo"
+            },
+            {
+                "text": "Däck"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad av detta är en yttre faktor som påverkar köregenskaper?",
+        "options": [
+            {
+                "text": "Väglag"
+            },
+            {
+                "text": "Bromsarna"
+            },
+            {
+                "text": "Styrservo"
+            },
+            {
+                "text": "Däck"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad av detta är en yttre faktor som påverkar köregenskaper?",
+        "options": [
+            {
+                "text": "Sidkraft"
+            },
+            {
+                "text": "Bromsarna"
+            },
+            {
+                "text": "Styrservo"
+            },
+            {
+                "text": "Stötdämparna"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    }
+]
