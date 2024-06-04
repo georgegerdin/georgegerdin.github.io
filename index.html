@@ -1,57 +1,67 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Multiple Choice Quiz</title>
-  <style>
-    .question {
-      margin-bottom: 30px;
-      padding: 20px;
-      background-color: #f5f5f5;
-      border-radius: 5px;
-    }
-    .question-image {
-      max-width: 100%;
-      height: auto;
-      margin-bottom: 10px;
-    }
-    .options {
-      list-style-type: none;
-      padding: 0;
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-    }
-    .options li {
-      margin-bottom: 10px;
-      cursor: pointer;
-      padding: 10px;
-      border: 1px solid #c9daf8;
-      border-bottom: 2px solid #a1b8e2;
-      border-radius: 4px;
-      width: 48%;
-      display: flex;
-      align-items: center;
-    }
-    .options li img {
-      max-width: 50px;
-      max-height: 50px;
-      margin-right: 10px;
-    }
-    .correct {
-      border-color: green;
-      background: linear-gradient(to bottom, #d9ffdd, #84e184);
-    }
-    .incorrect {
-      border-color: red;
-      background: linear-gradient(to bottom, #ffd9d9, #e18484);
-    }
-    .navigation {
-      margin-top: 20px;
-    }
-    .navigation button {
-      padding: 8px 16px;
-      margin-right: 10px;
-    }
+    <title>Multiple Choice Quiz</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      .question {
+        margin-bottom: 30px;
+        padding: 20px;
+        background-color: #f5f5f5;
+        border-radius: 5px;
+      }
+      .question-image {
+        max-width: 100%;
+        height: auto;
+        margin-bottom: 10px;
+      }
+      .options {
+        list-style-type: none;
+        padding: 0;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+      }
+      .options li {
+        margin-bottom: 10px;
+        cursor: pointer;
+        padding: 10px;
+        border: 1px solid #c9daf8;
+        border-bottom: 2px solid #a1b8e2;
+        border-radius: 4px;
+        width: 100%;
+        display: flex;
+        align-items: center;
+      }
+      .options li img {
+        max-width: 50px;
+        max-height: 50px;
+        margin-right: 10px;
+      }
+      .correct {
+        border-color: green;
+        background: linear-gradient(to bottom, #d9ffdd, #84e184);
+      }
+      .incorrect {
+        border-color: red;
+        background: linear-gradient(to bottom, #ffd9d9, #e18484);
+      }
+      .navigation {
+        margin-top: 20px;
+        display: flex;
+        justify-content: center;
+      }
+      .navigation button {
+        padding: 8px 16px;
+        margin: 0 5px;
+      }
+
+      /* Media Queries for Responsive Design */
+      @media (min-width: 768px) {
+        .options li {
+          width: 48%;
+        }
+      }
   </style>
 </head>
 <body>
