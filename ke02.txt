@@ -1,0 +1,282 @@
+[
+    {
+        "question": "Vad är sidkraft?",
+        "options": [
+            {
+                "text": "Den fysiska kraften mellan däck och väg som gör att man svänger"
+            },
+            {
+                "text": "Den fysiska kraften mellan ratt och däck som gör att man svänger"
+            },
+            {
+                "text": "Den fysiska kraften i motorn som gör att man gasar"
+            },
+            {
+                "text": "Den fysiska kraften i bensinen som gör att bilen startar"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad är sidkraftsbehov?",
+        "options": [
+            {
+                "text": "Den mängd kraft som behövs för att bilen ska svänga"
+            },
+            {
+                "text": "Den mängd kraft som behövs för att bilen ska starta"
+            },
+            {
+                "text": "Den mängd kraft som behövs för att bilen ska stanna"
+            },
+            {
+                "text": "Den mängd kraft som behövs för att bilen ska bromsa"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Hur ökar och minskar sidkraftsbehovet i förhållande till hastigheten?",
+        "options": [
+            {
+                "text": "Linjärt"
+            },
+            {
+                "text": "I kvadrat"
+            },
+            {
+                "text": "Omvänt"
+            },
+            {
+                "text": "Ingen relation"
+            }
+        ],
+        "answer": [
+            1
+        ]
+    },
+    {
+        "question": "Hur ökar och minskar sidkraftsbehovet i förhållande till vikten?",
+        "options": [
+            {
+                "text": "Linjärt"
+            },
+            {
+                "text": "I kvadrat"
+            },
+            {
+                "text": "Omvänt"
+            },
+            {
+                "text": "Ingen relation"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad av dessa alternativ har inverkan på bilens sidkraftsbehov?",
+        "options": [
+            {
+                "text": "Bilens vikt"
+            },
+            {
+                "text": "Bilens färg"
+            },
+            {
+                "text": "Domkraften"
+            },
+            {
+                "text": "Bakluckan"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad av dessa alternativ har inverkan på bilens sidkraftsbehov?",
+        "options": [
+            {
+                "text": "Bilens hastighet"
+            },
+            {
+                "text": "Bilens färg"
+            },
+            {
+                "text": "Domkraften"
+            },
+            {
+                "text": "Vindrutan"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad händer med sidkraftsbehovet om hastigheten dubblas?",
+        "options": [
+            {
+                "text": "Fyrdubblas"
+            },
+            {
+                "text": "Halveras"
+            },
+            {
+                "text": "Dubbleras"
+            },
+            {
+                "text": "Niodubblas"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad händer med sidkraftsbehovet om hastigheten ökar från 30 km/h till 90 km/h?",
+        "options": [
+            {
+                "text": "Fyrdubblas"
+            },
+            {
+                "text": "Halveras"
+            },
+            {
+                "text": "Dubbleras"
+            },
+            {
+                "text": "Niodubblas"
+            }
+        ],
+        "answer": [
+            3
+        ]
+    },
+    {
+        "question": "Vad händer med sidkraftsbehovet om hastigheten ökar från 50 km/h till 100 km/h?",
+        "options": [
+            {
+                "text": "Fyrdubblas"
+            },
+            {
+                "text": "Halveras"
+            },
+            {
+                "text": "Dubbleras"
+            },
+            {
+                "text": "Niodubblas"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad händer om sidkraftsbehovet blir för stort?",
+        "options": [
+            {
+                "text": "Bilen sladdar"
+            },
+            {
+                "text": "Bilen stannar"
+            },
+            {
+                "text": "Bilen gasar"
+            },
+            {
+                "text": "Bilen bromsar"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Hur kan man påverka sidkraftsbehovet?",
+        "options": [
+            {
+                "text": "Anpassa hastighet"
+            },
+            {
+                "text": "Byta färg på bilen"
+            },
+            {
+                "text": "Använda domkraft"
+            },
+            {
+                "text": "Öppna bakluckan"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad ska man göra om man kommer till en skarp kurva?",
+        "options": [
+            {
+                "text": "Sakta ned"
+            },
+            {
+                "text": "Gasa"
+            },
+            {
+                "text": "Växla till tvåan"
+            },
+            {
+                "text": "Växla till fyran"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad kan hända om man inte anpassar sin hastighet till en skarp kurva?",
+        "options": [
+            {
+                "text": "Man kan sladda av vägen"
+            },
+            {
+                "text": "Ingenting"
+            },
+            {
+                "text": "Bilen kan byta färg"
+            },
+            {
+                "text": "Man kan bli omkörd"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Hur förändras sidkraftsbehovet i en sväng om du ökar hastigheten från 50km/h till 100km/h?",
+        "options": [
+            {
+                "text": "Sidkraften är konstant och förändras inte i förhållande till hastigheten"
+            },
+            {
+                "text": "Den halveras"
+            },
+            {
+                "text": "Den fyrdubblas"
+            },
+            {
+                "text": "Den fördubblas"
+            }
+        ],
+        "answer": [
+            2
+        ]
+    }
+]
