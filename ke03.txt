@@ -1,0 +1,305 @@
+[
+    {
+        "question": "Vad är detta för typ av väg?",
+        "options": [
+            {
+                "text": "Kullerstensgata"
+            },
+            {
+                "text": "Motorväg"
+            },
+            {
+                "text": "Asfaltsväg"
+            },
+            {
+                "text": "Grusväg"
+            }
+        ],
+        "answer": [
+            0
+        ],
+        "image": "cobblestone.jpg"
+    },
+    {
+        "question": "Vad är detta för typ av väg?",
+        "options": [
+            {
+                "text": "Kullerstensgata"
+            },
+            {
+                "text": "Motorväg"
+            },
+            {
+                "text": "Asfaltsväg"
+            },
+            {
+                "text": "Grusväg"
+            }
+        ],
+        "answer": [
+            3
+        ],
+        "image": "grus.jpeg"
+    },
+    {
+        "question": "Vad är detta för typ av väg?",
+        "options": [
+            {
+                "text": "Kullerstensgata"
+            },
+            {
+                "text": "Motorväg"
+            },
+            {
+                "text": "Asfaltsväg"
+            },
+            {
+                "text": "Grusväg"
+            }
+        ],
+        "answer": [
+            2
+        ],
+        "image": "asfalt.jpeg"
+    },
+    {
+        "question": "Vad påverkar väggreppet negativt?",
+        "options": [
+            {
+                "text": "Regn"
+            },
+            {
+                "text": "Högt däcktryck"
+            },
+            {
+                "text": "Långt avstånd till framförvarande bil"
+            },
+            {
+                "text": "En ren, torr vägbana"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad påverkar väggreppet negativt?",
+        "options": [
+            {
+                "text": "Snö och is"
+            },
+            {
+                "text": "Högt däcktryck"
+            },
+            {
+                "text": "Långt avstånd till framförvarande bil"
+            },
+            {
+                "text": "En ren, torr vägbana"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad påverkar väggreppet negativt?",
+        "options": [
+            {
+                "text": "Ojämnheter i vägen"
+            },
+            {
+                "text": "Högt däcktryck"
+            },
+            {
+                "text": "Nya däck"
+            },
+            {
+                "text": "En ren, torr vägbana"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad påverkar väggreppet negativt?",
+        "options": [
+            {
+                "text": "Om asfalten är nylagd"
+            },
+            {
+                "text": "Högt däcktryck"
+            },
+            {
+                "text": "Långt avstånd till framförvarande bil"
+            },
+            {
+                "text": "En ren, torr vägbana"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad påverkar väggreppet negativt?",
+        "options": [
+            {
+                "text": "Slitna däck"
+            },
+            {
+                "text": "Högt däcktryck"
+            },
+            {
+                "text": "Långt avstånd till framförvarande bil"
+            },
+            {
+                "text": "En ren, torr vägbana"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad kan du göra ifall väggreppet är dåligt för att öka säkerheten?",
+        "options": [
+            {
+                "text": "Anpassa hastigheten"
+            },
+            {
+                "text": "Öka hastigheten"
+            },
+            {
+                "text": "Gasa och bromsa snabbt"
+            },
+            {
+                "text": "Minska avståndet till bilen framför"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vad kan du göra ifall väggreppet är dåligt för att öka säkerheten?",
+        "options": [
+            {
+                "text": "Öka avståndet till bilen framför"
+            },
+            {
+                "text": "Öka hastigheten"
+            },
+            {
+                "text": "Gasa och bromsa snabbt"
+            },
+            {
+                "text": "Minska avståndet till bilen framför"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vilken typ av väg ger sämst väggrepp?",
+        "options": [
+            {
+                "text": "En blöt asfaltsväg"
+            },
+            {
+                "text": "En blöt kullerstensgata"
+            },
+            {
+                "text": "En torr asfaltsväg"
+            },
+            {
+                "text": "En hårt packad grusväg"
+            }
+        ],
+        "answer": [
+            1
+        ]
+    },
+    {
+        "question": "Vilken typ av väg ger sämst väggrepp?",
+        "options": [
+            {
+                "text": "En motorväg"
+            },
+            {
+                "text": "En kullerstensgata"
+            },
+            {
+                "text": "En torr asfaltsväg"
+            },
+            {
+                "text": "En hårt packad grusväg"
+            }
+        ],
+        "answer": [
+            1
+        ]
+    },
+    {
+        "question": "Vilken typ av väg ger sämst väggrepp?",
+        "options": [
+            {
+                "text": "En blöt nylagd asfaltsväg"
+            },
+            {
+                "text": "En torr asfaltsväg"
+            },
+            {
+                "text": "En motorväg"
+            },
+            {
+                "text": "En hårt packad grusväg"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Vilken typ av väg ger bäst väggrepp?",
+        "options": [
+            {
+                "text": "En blöt asfaltsväg"
+            },
+            {
+                "text": "En blöt löst packad grusväg"
+            },
+            {
+                "text": "En torr asfaltsväg"
+            },
+            {
+                "text": "En hårt packad grusväg"
+            }
+        ],
+        "answer": [
+            2
+        ]
+    },
+    {
+        "question": "Vilken av följande underlag ger bäst väggrepp en varm och regnig sommardag?",
+        "options": [
+            {
+                "text": "En kullerstensgata"
+            },
+            {
+                "text": "En helt nylagd asfaltsväg"
+            },
+            {
+                "text": "En lerig asfaltsväg"
+            },
+            {
+                "text": "En hårt packad grusväg"
+            }
+        ],
+        "answer": [
+            3
+        ]
+    }
+]
