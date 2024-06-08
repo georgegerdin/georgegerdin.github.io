@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Multiple Choice Quiz</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      .question {
+        margin-bottom: 30px;
+        padding: 20px;
+        background-color: #f5f5f5;
+        border-radius: 5px;
+      }
+      .question-image {
+        max-width: 100%;
+        height: auto;
+        margin-bottom: 10px;
+      }
+      .options {
+        list-style-type: none;
+        padding: 0;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+      }
+      .options li {
+        margin-bottom: 10px;
+        cursor: pointer;
+        padding: 10px;
+        border: 1px solid #c9daf8;
+        border-bottom: 2px solid #a1b8e2;
+        border-radius: 4px;
+        width: 100%;
+        display: flex;
+        align-items: center;
+      }
+      .options li img {
+        max-width: 100px;
+        max-height: 100px;
+        margin-right: 10px;
+      }
+      .correct {
+        border-color: green;
+        background: linear-gradient(to bottom, #d9ffdd, #84e184);
+      }
+      .incorrect {
+        border-color: red;
+        background: linear-gradient(to bottom, #ffd9d9, #e18484);
+      }
+      .navigation {
+        margin-top: 20px;
+        display: flex;
+        justify-content: center;
+      }
+      .navigation button {
+        padding: 8px 16px;
+        margin: 0 5px;
+      }
+
+      /* Media Queries for Responsive Design */
+      @media (min-width: 768px) {
+        .options li {
+          width: 48%;
+        }
+      }
+  </style>
+</head>
+<body>
+  <h1>Multiple Choice Quiz</h1>
+  <div id="quiz"></div>
+  <div class="navigation">
+    <button id="prevBtn" disabled>Previous</button>
+    <button id="nextBtn">Next</button>
+  </div>
+  <div id="score"></div>
+  <script>
+    // Function to shuffle an array
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    // Function to fetch the JSON data from the specified file
+    function fetchData(filePath) {
+      return fetch(filePath)
+        .then(response => response.text())
+        .then(data => JSON.parse(data));
+    }
+
+    // Function to display the quiz question
+    function displayQuestion(question, index) {
+      const quizContainer = document.getElementById('quiz');
+      quizContainer.innerHTML = ''; // Clear previous content
+
+      const questionDiv = document.createElement('div');
+      questionDiv.classList.add('question');
+      const questionText = document.createElement('h3');
+      questionText.textContent = `${index + 1}. ${question.question}`;
+      questionDiv.appendChild(questionText);
+
+      // Display the question image if provided
+      if (question.image) {
+        const questionImage = document.createElement('img');
+        questionImage.src = question.image;
+        questionImage.classList.add('question-image');
+        questionDiv.appendChild(questionImage);
+      }
+
+      const optionsList = document.createElement('ul');
+      optionsList.classList.add('options');
+
+      // Shuffle the options array
+      const shuffledOptions = shuffleArray([...question.options]);
+
+      // Create a map to store the correct answer indices after shuffling
+      const answerMap = new Map();
+
+      const optionEventListeners = []; // Array to store event listeners
+
+      shuffledOptions.forEach((option, optionIndex) => {
+        const optionItem = document.createElement('li');
+        const optionTextContainer = document.createElement('div');
+
+        // Check if the option has an image
+        if (option.image) {
+          const optionImage = document.createElement('img');
+          optionImage.src = option.image;
+          optionItem.appendChild(optionImage);
+        }
+
+        const optionText = document.createElement('span');
+        optionText.textContent = option.text;
+        optionTextContainer.appendChild(optionText);
+        optionItem.appendChild(optionTextContainer);
+
+        optionItem.dataset.index = optionIndex; // Store the index as a data attribute
+
+        // Update the answerMap with the correct answer index
+        if (question.answer.includes(question.options.indexOf(option))) {
+          answerMap.set(optionIndex, true);
+        }
+
+        // Add event listener only if the option hasn't been clicked
+        if (!optionItem.classList.contains('clicked')) {
+          const handleClick = () => {
+            optionItem.classList.add('clicked'); // Mark the option as clicked
+            const isCorrect = answerMap.get(optionIndex) || false;
+            showAnswer(optionItem, isCorrect, shuffledOptions, answerMap);
+            updateScore(isCorrect);
+            removeAllEventListeners(optionEventListeners); // Remove all event listeners
+          };
+          optionItem.addEventListener('click', handleClick);
+          optionEventListeners.push(handleClick); // Store the event listener
+        }
+        optionsList.appendChild(optionItem);
+      });
+      questionDiv.appendChild(optionsList);
+      quizContainer.appendChild(questionDiv);
+    }
+
+    // Function to remove all event listeners
+    function removeAllEventListeners(listeners) {
+      const optionItems = document.querySelectorAll('.options li');
+      optionItems.forEach(item => {
+        listeners.forEach(listener => {
+          item.removeEventListener('click', listener);
+        });
+      });
+    }
+
+    // Function to show the correct answer
+    function showAnswer(optionItem, isCorrect, shuffledOptions, answerMap) {
+      // Remove existing classes
+      optionItem.classList.remove('correct', 'incorrect');
+      // Add the appropriate class based on correctness
+      optionItem.classList.add(isCorrect ? 'correct' : 'incorrect');
+
+      // Reveal the correct answer if the clicked option is incorrect
+      if (!isCorrect) {
+        const correctOptionIndex = shuffledOptions.findIndex(option => answerMap.get(shuffledOptions.indexOf(option)));
+        const correctOptionItem = document.querySelector(`.options li:nth-child(${correctOptionIndex + 1})`);
+        correctOptionItem.classList.add('correct');
+      }
+    }
+
+    // Function to update the score
+    let correctCount = 0;
+    let incorrectCount = 0;
+    function updateScore(isCorrect) {
+      const scoreContainer = document.getElementById('score');
+      if (isCorrect) {
+        correctCount++;
+      } else {
+        incorrectCount++;
+      }
+      scoreContainer.textContent = `Correct: ${correctCount}, Incorrect: ${incorrectCount}`;
+    }
+
+    // Get the file parameter from the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const fileParam = urlParams.get('file');
+
+    // Fetch the JSON data and display the quiz
+    const filePath = fileParam ? fileParam : 'mcq.txt'; // Use the provided file or default to 'mcq.txt'
+    fetchData(filePath)
+      .then(data => {
+        const questions = data;
+        let currentQuestionIndex = 0;
+
+        // Display the initial question
+        displayQuestion(questions[currentQuestionIndex], currentQuestionIndex);
+
+        // Add event listeners for navigation buttons
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+
+        prevBtn.addEventListener('click', () => {
+          if (currentQuestionIndex > 0) {
+            currentQuestionIndex--;
+            displayQuestion(questions[currentQuestionIndex], currentQuestionIndex);
+            nextBtn.disabled = false;
+            if (currentQuestionIndex === 0) {
+              prevBtn.disabled = true;
+            }
+          }
+        });
+
+        nextBtn.addEventListener('click', () => {
+          if (currentQuestionIndex < questions.length - 1) {
+            currentQuestionIndex++;
+            displayQuestion(questions[currentQuestionIndex], currentQuestionIndex);
+            prevBtn.disabled = false;
+            if (currentQuestionIndex === questions.length - 1) {
+              nextBtn.disabled = true;
+            }
+          }
+        });
+      })
+      .catch(error => console.error('Error fetching data:', error));
+  </script>
+</body>
+</html>
