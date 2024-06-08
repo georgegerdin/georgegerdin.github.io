@@ -260,6 +260,46 @@
         ]
     },
     {
+        "question": "Hur förändras sidkraftsbehovet i en sväng om du sänker hastigheten från 60km/h till 30km/h?",
+        "options": [
+            {
+                "text": "Sidkraften är konstant och förändras inte i förhållande till hastigheten"
+            },
+            {
+                "text": "Den halveras"
+            },
+            {
+                "text": "Den sjunker till en fjärdedel"
+            },
+            {
+                "text": "Den fördubblas"
+            }
+        ],
+        "answer": [
+            2
+        ]
+    },
+    {
+        "question": "Hur förändras sidkraftsbehovet i en sväng om du sänker hastigheten från 90km/h till 30km/h?",
+        "options": [
+            {
+                "text": "Sidkraften är konstant och förändras inte i förhållande till hastigheten"
+            },
+            {
+                "text": "Den halveras"
+            },
+            {
+                "text": "Den sjunker till en niondel"
+            },
+            {
+                "text": "Den fördubblas"
+            }
+        ],
+        "answer": [
+            2
+        ]
+    },
+    {
         "question": "Hur förändras sidkraftsbehovet i en sväng om du ökar hastigheten från 50km/h till 100km/h?",
         "options": [
             {
