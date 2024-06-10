@@ -1,0 +1,268 @@
+[
+    {
+        "question": "Vad är rörelseenergi?",
+        "options": [
+            {
+                "text": "Energi ett objekt i rörelse har"
+            },
+            {
+                "text": "Motorns kraft"
+            },
+            {
+                "text": "Däckens grepp"
+            },
+            {
+                "text": "Energi ett stillastående objekt har"
+            },
+            {
+                "text": "Väglaget"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Hur påverkas rörelseenergin av bilens vikt?",
+        "options": [
+            {
+                "text": "Proportionellt"
+            },
+            {
+                "text": "Ingenting"
+            },
+            {
+                "text": "I kvadrat"
+            },
+            {
+                "text": "Exponentiellt"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Hur ändras bilens rörelseenergi om vikten dubblas?",
+        "options": [
+            {
+                "text": "Dubblas"
+            },
+            {
+                "text": "Halveras"
+            },
+            {
+                "text": "Fyrdubblas"
+            },
+            {
+                "text": "Niodubblas"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Hur påverkas rörelseenergin av bilens hastighet?",
+        "options": [
+            {
+                "text": "Proportionellt"
+            },
+            {
+                "text": "Ingenting"
+            },
+            {
+                "text": "I kvadrat"
+            },
+            {
+                "text": "Omvänt"
+            }
+        ],
+        "answer": [
+            2
+        ]
+    },
+    {
+        "question": "Hur påverkas rörelseenergin om bilens hastighet dubbleras?",
+        "options": [
+            {
+                "text": "Dubblas"
+            },
+            {
+                "text": "Halveras"
+            },
+            {
+                "text": "Fyrdubblas"
+            },
+            {
+                "text": "Niodubblas"
+            }
+        ],
+        "answer": [
+            2
+        ]
+    },
+    {
+        "question": "Hur påverkas rörelseenergin om bilens hastighet ökar från 20 km/h till 40 km/h?",
+        "options": [
+            {
+                "text": "Dubblas"
+            },
+            {
+                "text": "Halveras"
+            },
+            {
+                "text": "Fyrdubblas"
+            },
+            {
+                "text": "Niodubblas"
+            }
+        ],
+        "answer": [
+            2
+        ]
+    },
+    {
+        "question": "Hur förändras bilens rörelseenergi om du ökar hastigheten från 20 km/h till 60 km/h?",
+        "options": [
+            {
+                "text": "Den tredubblas"
+            },
+            {
+                "text": "Rörelseenergin är konstant och förändras inte"
+            },
+            {
+                "text": "Den niodubblas"
+            },
+            {
+                "text": "Den sexdubblas"
+            }
+        ],
+        "answer": [
+            2
+        ]
+    }
+    {
+        "question": "Hur påverkas rörelseenergin av bilens form?",
+        "options": [
+            {
+                "text": "Proportionellt"
+            },
+            {
+                "text": "Ingenting"
+            },
+            {
+                "text": "I kvadrat"
+            },
+            {
+                "text": "Omvänt"
+            }
+        ],
+        "answer": [
+            1
+        ]
+    },
+    {
+        "question": "Hur påverkas bromssträckan av bilens rörelseenergi?",
+        "options": [
+            {
+                "text": "Proportionellt"
+            },
+            {
+                "text": "Ingenting"
+            },
+            {
+                "text": "I kvadrat"
+            },
+            {
+                "text": "Omvänt"
+            }
+        ],
+        "answer": [
+            0
+        ]
+    },
+    {
+        "question": "Hur påverkas bromssträckan av bilens hastighet?",
+        "options": [
+            {
+                "text": "Proportionellt"
+            },
+            {
+                "text": "Ingenting"
+            },
+            {
+                "text": "I kvadrat"
+            },
+            {
+                "text": "Omvänt"
+            }
+        ],
+        "answer": [
+            2
+        ]
+    },
+    {
+        "question": "Hur påverkas bromssträckan om bilens hastighet ökar från 20 km/h till 40 km/h?",
+        "options": [
+            {
+                "text": "Dubblas"
+            },
+            {
+                "text": "Halveras"
+            },
+            {
+                "text": "Fyrdubblas"
+            },
+            {
+                "text": "Niodubblas"
+            }
+        ],
+        "answer": [
+            2
+        ]
+    },
+    {
+        "question": "Vad påverkar en bils rörelseenergi?",
+        "options": [
+            {
+                "text": "Dess bromsar och väglaget"
+            },
+            {
+                "text": "Dess form samt väglaget"
+            },
+            {
+                "text": "Dess vikt och hastighet"
+            },
+            {
+                "text": "Dess hastighet och form"
+            },
+            {
+                "text": "Dess vikt och form"
+            }
+        ],
+        "answer": [
+            2
+        ]
+    },
+    {
+        "question": "Hur förändras bilens rörelseenergi om du ökar hastigheten från 30 km/h till 90 km/h?",
+        "options": [
+            {
+                "text": "Den tredubblas"
+            },
+            {
+                "text": "Rörelseenergin är konstant och förändras inte"
+            },
+            {
+                "text": "Den niodubblas"
+            },
+            {
+                "text": "Den sexdubblas"
+            }
+        ],
+        "answer": [
+            2
+        ]
+    }
+]
