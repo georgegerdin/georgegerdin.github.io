@@ -141,7 +141,7 @@
         "answer": [
             2
         ]
-    }
+    },
     {
         "question": "Hur påverkas rörelseenergin av bilens form?",
         "options": [
