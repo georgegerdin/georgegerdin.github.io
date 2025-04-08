@@ -698,7 +698,7 @@
             // --- End Info Display Update ---
 
 
-             if (controls.isLocked) { // Only update physics and interactions if game is active
+                         if (controls.isLocked) { // Only update physics and interactions if game is active
                 const playerPos = controls.getObject().position;
 
                 // --- Apply Damping & Gravity ---
@@ -709,20 +709,35 @@
                 // Gravity
                 velocity.y -= gravity * delta;
 
-                // --- Calculate Movement Intent based on Input ---
+                // --- Calculate Movement Intent based on Input (RELATIVE TO CAMERA) ---
                 direction.z = Number(moveForward) - Number(moveBackward);
                 direction.x = Number(moveRight) - Number(moveLeft);
                 direction.normalize(); // Ensures consistent speed diagonally
 
+                // Get camera's forward and right vectors (projected onto XZ plane)
+                const cameraDirection = new THREE.Vector3();
+                controls.getObject().getWorldDirection(cameraDirection); // Use controls object
+                const forward = new THREE.Vector3(cameraDirection.x, 0, cameraDirection.z).normalize();
+                const right = new THREE.Vector3();
+                // Use camera.up which is typically (0, 1, 0) for world up
+                right.crossVectors(camera.up, forward).normalize(); // Calculate right vector
+
                 const currentSpeed = playerSpeed * delta; // Scale speed by frame time
-                if (moveForward || moveBackward) velocity.z -= direction.z * currentSpeed;
-                if (moveLeft || moveRight) velocity.x -= direction.x * currentSpeed;
+
+                // Add velocity components based on camera direction and input
+                // Note: We ADD velocity components based on the direction vectors
+                if (direction.z !== 0) { // Forward/Backward input
+                    const moveStep = forward.clone().multiplyScalar(direction.z * currentSpeed);
+                    velocity.add(moveStep); // Add the calculated forward/backward velocity component
+                }
+                if (direction.x !== 0) { // Left/Right input
+                    const moveStep = right.clone().multiplyScalar(direction.x * currentSpeed);
+                    velocity.add(moveStep); // Add the calculated left/right velocity component
+                }
 
 
                 // --- Collision Detection & Resolution (Axis-by-Axis AABB) ---
-
-                // Store original position for potential resets if needed (though axis separation handles most cases)
-                // const originalPos = playerPos.clone();
+                // (The rest of your collision code starting from here should be fine)
 
                 // --- 1. Resolve X-axis Collision ---
                 let nextX = playerPos.x + velocity.x * delta;
@@ -731,7 +746,6 @@
 
                 if (checkCollision(tempPos)) {
                     velocity.x = 0; // Stop horizontal movement on this axis
-                    // No need to adjust nextX here, just don't apply the velocity
                 } else {
                     playerPos.x = nextX; // Apply movement if no collision
                 }
@@ -757,7 +771,9 @@
 
                 if (checkCollision(tempPos)) {
                     if (velocity.y < 0) { // Moving down - hit ground
-                        // Find the exact ground level below the player's intended next foot position
+                        // ... (your existing ground collision logic) ...
+                        // Make sure this part sets canJump = true; and velocity.y = 0;
+                         // Find the exact ground level below the player's intended next foot position
                         const playerFeetY = nextY - playerHeight;
                         const checkMinX = Math.floor(playerPos.x - playerHalfWidth);
                         const checkMaxX = Math.floor(playerPos.x + playerHalfWidth);
@@ -776,20 +792,23 @@
                         }
 
                         // If ground was found nearby and the player is moving into/below it
-                        if (highestGroundY > -Infinity && playerFeetY <= highestGroundY) {
+                        // Add a small tolerance (epsilon) to prevent issues when exactly at ground level
+                        const epsilon = 0.01;
+                        if (highestGroundY > -Infinity && playerFeetY <= highestGroundY + epsilon) {
                              playerPos.y = highestGroundY + playerHeight; // Snap feet exactly to ground surface
                              isOnGround = true;
                              canJump = true; // Now we can jump
                         } else {
                              // Collision detected, but maybe not directly below? Stop velocity anyway.
                              // This might happen on sharp corners or complex geometry.
-                             playerPos.y = playerPos.y; // Keep current Y if snapping logic fails
+                             // Don't change playerPos.y here if snapping fails, let velocity stop it.
                         }
                         velocity.y = 0; // Stop falling
 
                     } else if (velocity.y > 0) { // Moving up - hit ceiling
-                        // Find the exact ceiling level above the player's intended next head position
-                        const playerHeadY = nextY;
+                         // ... (your existing ceiling collision logic) ...
+                         // Make sure this part sets velocity.y = 0;
+                         const playerHeadY = nextY;
                         const checkMinX = Math.floor(playerPos.x - playerHalfWidth);
                         const checkMaxX = Math.floor(playerPos.x + playerHalfWidth);
                         const checkMinZ = Math.floor(playerPos.z - playerHalfDepth);
@@ -807,11 +826,13 @@
                          }
 
                          // If ceiling was found nearby and player moving into/above it
-                         if (lowestCeilingY < Infinity && playerHeadY >= lowestCeilingY) {
-                              playerPos.y = lowestCeilingY - 0.01; // Snap head just below ceiling (small epsilon)
+                         // Add a small tolerance
+                         const epsilon = 0.01;
+                         if (lowestCeilingY < Infinity && playerHeadY >= lowestCeilingY - epsilon) {
+                              playerPos.y = lowestCeilingY - epsilon; // Snap head just below ceiling
                          } else {
                               // Collision detected, but maybe not directly above? Stop velocity anyway.
-                              playerPos.y = playerPos.y; // Keep current Y if snapping logic fails
+                              // Don't change playerPos.y if snapping fails
                          }
                          velocity.y = 0; // Stop rising
                     }
@@ -835,7 +856,8 @@
                 // Update the voxel outline based on where the player is looking
                 updateVoxelOutline();
 
-             } else {
+             } // End if (controls.isLocked)
+             else {
                  // Reset velocity if paused to prevent sudden movement on resume
                  velocity.set(0, 0, 0);
                  canJump = false; // Can't jump while paused
