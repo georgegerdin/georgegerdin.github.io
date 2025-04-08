@@ -129,12 +129,12 @@
 
         // --- Define URLs for Toolbar Icons --- << NEW/MODIFIED SECTION >>
         const textureUrls = {
-            dirt: 'grass.jpg',
+            dirt: 'dirt.jpg',
             grass: 'grass.jpg', // Use top view for grass icon
-            stone: 'grass.jpg',
-            wood: 'grass.jpg', // Use top view for wood icon
-            leaves: 'grass.jpg',
-            sand: 'grass.jpg',
+            stone: 'cobble.jpg',
+            wood: 'wood.jpg', // Use top view for wood icon
+            leaves: 'leaves.webp',
+            sand: 'sand.jpg',
         };
 
         // --- Texture Loading (for 3D Meshes) ---
@@ -144,7 +144,7 @@
             grass: textureLoader.load('grass.jpg'), // Side texture for mesh
             grass_top: textureLoader.load(textureUrls.grass), // Top texture for mesh & icon
             stone: textureLoader.load(textureUrls.stone),
-            wood: textureLoader.load('grass.jpg'), // Side texture for mesh
+            wood: textureLoader.load('wood.jpg'), // Side texture for mesh
             wood_top: textureLoader.load(textureUrls.wood), // Top texture for mesh & icon
             leaves: textureLoader.load(textureUrls.leaves),
             sand: textureLoader.load(textureUrls.sand),
