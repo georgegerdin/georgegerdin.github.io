@@ -85,7 +85,7 @@
         <div id="instructions">
             <h1>Simple 3D Blocks</h1>
             <p>Click to Play</p>
-            <p>(W, A, S, D = Move, SPACE = Jump, SHIFT/CTRL = Down, MOUSE = Look)</p>
+            <p>(W, A, S, D = Move, SPACE = Jump, SHIFT/CTRL = Down,  = Look)</p>
             <p>Left Click = Place Block, Right Click = Remove Block</p>
             <p>SCROLL WHEEL = Change Block Type</p> <!-- Added instruction -->
         </div>
@@ -432,28 +432,63 @@
                  const intersection = getIntersection();
                  if (!intersection) return;
 
-                 const pos = intersection.point;
-                 const normal = intersection.face.normal;
-                 const obj = intersection.object;
-                 const hitCoords = obj.userData;
-                 if (!hitCoords || typeof hitCoords.x === 'undefined') return;
+                 // intersection.point is the exact point in 3D space where the click landed
+                 // intersection.face.normal is the vector pointing outwards from the clicked face
+                 // intersection.object is the mesh that was clicked
 
-                 if (event.button === 0) { // Left click
-                     const placePos = new THREE.Vector3().copy(hitCoords).addScaledVector(normal.clone().normalize(), 0.51);
-                     const placeCoords = { x: Math.floor(placePos.x), y: Math.floor(placePos.y), z: Math.floor(placePos.z) };
+                 const obj = intersection.object;
+                 const hitCoords = obj.userData; // These are the integer {x, y, z} coords of the hit block
+
+                 // Ensure we actually hit a world block with coordinates
+                 if (!hitCoords || typeof hitCoords.x === 'undefined') {
+                     console.log("Clicked on non-world object or object missing coords.");
+                     return;
+                 }
+
+                 const normal = intersection.face.normal;
+
+                 if (event.button === 0) { // Left click - Place block
+                     // --- CORRECTED PLACEMENT LOGIC ---
+                     // Calculate the integer coordinates of the voxel where the new block should be placed.
+                     // We simply add the normal's components (rounded to ensure they are -1, 0, or 1)
+                     // to the integer coordinates of the block that was hit.
+                     const placeCoords = {
+                         x: hitCoords.x + Math.round(normal.x),
+                         y: hitCoords.y + Math.round(normal.y),
+                         z: hitCoords.z + Math.round(normal.z)
+                     };
+                     // --- End Corrected Logic ---
+
+                     // --- Player Collision Check (Refined) ---
                      const playerPos = controls.getObject().position;
                      const playerVoxelX = Math.floor(playerPos.x);
-                     const playerVoxelYFloor = Math.floor(playerPos.y - playerHeight + 0.1);
-                     const playerVoxelYHead = Math.floor(playerPos.y + 0.1);
+                     // Calculate the voxel the player's feet are primarily in
+                     const playerVoxelYFeet = Math.floor(playerPos.y - playerHeight + 0.01); // Small epsilon helps with floor rounding
+                     // Calculate the voxel the player's head is primarily in
+                     const playerVoxelYHead = Math.floor(playerPos.y - 0.1); // Check slightly below camera position
                      const playerVoxelZ = Math.floor(playerPos.z);
-                     const isInsidePlayer = (placeCoords.x === playerVoxelX && placeCoords.z === playerVoxelZ &&
-                                            (placeCoords.y === playerVoxelYFloor || placeCoords.y === playerVoxelYHead));
-                     if (!isInsidePlayer) {
+
+                     // Check if the target placement voxel is the same as the player's feet voxel
+                     const isAtPlayerFeet = (placeCoords.x === playerVoxelX &&
+                                             placeCoords.z === playerVoxelZ &&
+                                             placeCoords.y === playerVoxelYFeet);
+
+                     // Check if the target placement voxel is the same as the player's head voxel
+                     const isAtPlayerHead = (placeCoords.x === playerVoxelX &&
+                                             placeCoords.z === playerVoxelZ &&
+                                             placeCoords.y === playerVoxelYHead);
+                     // --- End Player Collision Check ---
+
+
+                     // Place the block if it's not inside the player's occupied voxels
+                     if (!isAtPlayerFeet && !isAtPlayerHead) {
                          addVoxel(placeCoords.x, placeCoords.y, placeCoords.z, currentTool);
                      } else {
                          console.log("Cannot place block inside player");
                      }
-                 } else if (event.button === 2) { // Right click
+
+                 } else if (event.button === 2) { // Right click - Remove block
+                    // Removal logic remains the same - uses the coordinates of the block hit
                     removeVoxel(hitCoords.x, hitCoords.y, hitCoords.z);
                  }
              });
