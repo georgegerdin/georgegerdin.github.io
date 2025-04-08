@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simple 3D Block Game (Three.js)</title>
     <style>
-        /* ... (Keep all existing CSS) ... */
         body { margin: 0; overflow: hidden; font-family: sans-serif; background-color: #7ec0ee; }
         canvas { display: block; }
         #blocker {
@@ -77,7 +76,27 @@
             transform: scale(1.1); /* Slightly larger when selected */
             box-shadow: 0 0 5px rgba(0, 0, 255, 0.7); /* Optional glow */
         }
-        /* CSS Rules for background images are now handled by JS */
+        /* Info Display Styles */
+        #infoDisplay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
+            font-family: monospace; /* Good for aligning numbers */
+            font-size: 12px;
+            line-height: 1.4;
+            z-index: 5; /* Above canvas, below blocker maybe */
+            pointer-events: none; /* Don't capture mouse clicks */
+        }
+        #infoDisplay span {
+            display: inline-block; /* Allows setting width */
+            min-width: 35px;      /* Keeps layout stable */
+            text-align: right;    /* Align numbers nicely */
+            margin-left: 2px;
+        }
     </style>
 </head>
 <body>
@@ -85,16 +104,30 @@
         <div id="instructions">
             <h1>Simple 3D Blocks</h1>
             <p>Click to Play</p>
-            <p>(W, A, S, D = Move, SPACE = Jump, SHIFT/CTRL = Down,  = Look)</p>
+            <p>(W, A, S, D = Move, SPACE = Jump, SHIFT/CTRL = Down, MOUSE = Look)</p>
             <p>Left Click = Place Block, Right Click = Remove Block</p>
-            <p>SCROLL WHEEL = Change Block Type</p> <!-- Added instruction -->
+            <p>SCROLL WHEEL = Change Block Type</p>
         </div>
     </div>
 
-    <div id="crosshair"></div> <!-- Adjusted crosshair element -->
+    <div id="crosshair"></div>
 
     <div id="toolbar">
         <!-- Tool buttons will be populated by JS -->
+    </div>
+
+    <!-- Info Display -->
+    <div id="infoDisplay">
+        <div>FPS:<span id="fpsValue">--</span></div>
+        <div>Pos:
+            X:<span id="posX">--.--</span>|
+            Y:<span id="posY">--.--</span>|
+            Z:<span id="posZ">--.--</span>
+        </div>
+        <div>View:
+            Yaw:<span id="viewYaw">--.--</span>°|
+            Pitch:<span id="viewPitch">--.--</span>°
+        </div>
     </div>
 
     <!-- Import three.js -->
@@ -111,63 +144,63 @@
         import * as THREE from 'three';
         import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
-        // ... (scene, camera, renderer, controls, world, objects, world settings, etc. remain the same) ...
         let scene, camera, renderer, controls;
         let world = {};
-        const objects = [];
+        const objects = []; // Holds meshes for raycasting (blocks)
 
         const worldWidth = 20;
         const worldDepth = 20;
-        const worldHeight = 10;
-        const groundHeight = 5;
+        const worldHeight = 10; // Max build height
+        const groundHeight = 5; // Initial ground level
 
+        // Movement states
         let moveForward = false;
         let moveBackward = false;
         let moveLeft = false;
         let moveRight = false;
-        let moveUp = false; // Keep if you intend to use it later
-        let moveDown = false;
+        let moveDown = false; // For Shift/Ctrl key
 
+        // Physics/Movement variables
         const velocity = new THREE.Vector3();
         const direction = new THREE.Vector3();
         const gravity = 30.0;
         const jumpVelocity = 10.0;
         const playerSpeed = 400.0;
-        const playerHeight = 1.8;
+        const playerHeight = 1.8; // How tall the player is (affects collision and view height)
 
+        // DOM Elements
         const blocker = document.getElementById('blocker');
         const instructions = document.getElementById('instructions');
         const toolbar = document.getElementById('toolbar');
+        let fpsValueSpan, posXSpan, posYSpan, posZSpan, viewYawSpan, viewPitchSpan; // For info display
 
-        // --- Define URLs for Toolbar Icons ---
-        const textureUrls = {
-            grass: 'grass.jpg', // Top view
+        // --- Tool Management ---
+        const textureUrls = { // URLs for TOOLBAR ICONS (and some mesh textures)
+            grass: 'grass.jpg', // Use top view for grass icon
             dirt: 'dirt.jpg',
             stone: 'cobble.jpg',
-            wood: 'wood.jpg',   // Top view
+            wood: 'wood.jpg', // Use top view for wood icon
             leaves: 'leaves.webp',
             sand: 'sand.jpg',
         };
-
-        // --- Define Tool Order (NEW) ---
-        const toolTypes = Object.keys(textureUrls); // Get types in object definition order
+        const toolTypes = Object.keys(textureUrls); // Defines order of tools
         let currentToolIndex = 0; // Start with the first tool
         let currentTool = toolTypes[currentToolIndex]; // Initialize currentTool based on index
 
-        // --- Texture Loading ---
+        // --- Texture Loading (for 3D Meshes) ---
         const textureLoader = new THREE.TextureLoader();
         const textures = {
-            dirt: textureLoader.load(textureUrls.dirt),
-            grass: textureLoader.load('grass.jpg'), // Side texture
-            grass_top: textureLoader.load(textureUrls.grass), // Top texture & icon
+            dirt: textureLoader.load(textureUrls.dirt), // Reuse URL
+            grass: textureLoader.load('grass.jpg'), // Side texture for mesh (assuming different file or same if side/top same)
+            grass_top: textureLoader.load(textureUrls.grass), // Top texture for mesh & icon
             stone: textureLoader.load(textureUrls.stone),
-            wood: textureLoader.load('wood.jpg'), // Side texture
-            wood_top: textureLoader.load(textureUrls.wood), // Top texture & icon
+            wood: textureLoader.load('wood.jpg'), // Side texture for mesh
+            wood_top: textureLoader.load(textureUrls.wood), // Top texture for mesh & icon
             leaves: textureLoader.load(textureUrls.leaves),
             sand: textureLoader.load(textureUrls.sand),
         };
 
-        // Improve texture appearance
+        // Improve texture appearance (pixelated)
         for (const key in textures) {
             if (textures[key] && textures[key] instanceof THREE.Texture) {
                 textures[key].magFilter = THREE.NearestFilter;
@@ -176,8 +209,8 @@
         }
 
         // --- Material Definitions ---
-        const materials = {
-            grass: [
+         const materials = {
+            grass: [ // Multi-material for different faces
                 new THREE.MeshLambertMaterial({ map: textures.grass }), // right (+x)
                 new THREE.MeshLambertMaterial({ map: textures.grass }), // left (-x)
                 new THREE.MeshLambertMaterial({ map: textures.grass_top }), // top (+y)
@@ -187,7 +220,7 @@
             ],
             dirt: new THREE.MeshLambertMaterial({ map: textures.dirt }),
             stone: new THREE.MeshLambertMaterial({ map: textures.stone }),
-            wood: [
+            wood: [ // Multi-material for logs
                  new THREE.MeshLambertMaterial({ map: textures.wood }), // right
                  new THREE.MeshLambertMaterial({ map: textures.wood }), // left
                  new THREE.MeshLambertMaterial({ map: textures.wood_top }), // top
@@ -197,111 +230,141 @@
             ],
             leaves: new THREE.MeshLambertMaterial({
                  map: textures.leaves,
-                 alphaTest: 0.5,
-                 side: THREE.DoubleSide
+                 alphaTest: 0.5, // Simple cutout transparency
+                 side: THREE.DoubleSide // Render both sides
                 }),
             sand: new THREE.MeshLambertMaterial({ map: textures.sand }),
         };
 
 
-        // --- Raycasting ---
-        const raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, 0, -1), 0, 5); // Limit raycast distance slightly
-        const pointer = new THREE.Vector2(0, 0); // Center of screen
+        // --- Raycasting (for block interaction) ---
+        const raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, 0, -1), 0, 5); // Limit raycast distance
+        const pointer = new THREE.Vector2(0, 0); // Center of screen for raycasting
 
-        const voxelOutlineGeometry = new THREE.BoxGeometry(1.01, 1.01, 1.01);
+        // --- Voxel Outline ---
+        const voxelOutlineGeometry = new THREE.BoxGeometry(1.01, 1.01, 1.01); // Slightly larger than block
         const voxelOutlineMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true, depthTest: false, transparent: true, opacity: 0.7 });
         const voxelOutlineMesh = new THREE.Mesh(voxelOutlineGeometry, voxelOutlineMaterial);
         voxelOutlineMesh.visible = false;
 
+        // Timing
         let prevTime = performance.now();
+        let lastInfoUpdateTime = 0; // Can be used to throttle info updates if needed
 
         init();
         animate();
 
         // --- Utility Functions ---
-        function getVoxelKey(x, y, z) { return `${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`; }
+        function getVoxelKey(x, y, z) {
+             return `${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`;
+        }
 
+        // Gets the correct material (single or array) for a block type
         function getMaterial(type) {
              if (type === 'grass') return materials.grass;
              if (type === 'wood') return materials.wood;
-             return materials[type] || materials.stone;
+             // For single-texture blocks or fallback
+             return materials[type] || materials.stone; // Default to stone if specific material undefined
         }
+
 
         // --- Voxel Management ---
         function addVoxel(x, y, z, type) {
+            x = Math.floor(x); // Ensure integer coordinates
+            y = Math.floor(y);
+            z = Math.floor(z);
             const key = getVoxelKey(x, y, z);
+
+            // Prevent building outside world bounds or overwriting existing blocks
             if (world[key] || y < 0 || y >= worldHeight) return;
 
-             const material = getMaterial(type);
+             // Ensure material exists for the type before creating mesh
+             let material = getMaterial(type);
              if (!material) {
-                 console.warn(`No material for type: ${type}. Using stone.`);
-                 type = 'stone';
+                 console.warn(`No material found for type: ${type}. Using stone.`);
+                 type = 'stone'; // Fallback to stone if material is missing
                  material = materials.stone;
              }
 
             const geometry = new THREE.BoxGeometry(1, 1, 1);
             const mesh = new THREE.Mesh(geometry, material);
 
+            // Position mesh at the center of the voxel space
             mesh.position.set(x + 0.5, y + 0.5, z + 0.5);
+            // Store voxel coordinates and type in userData for later retrieval
             mesh.userData = { x, y, z, type };
 
             scene.add(mesh);
-            objects.push(mesh);
-            world[key] = { type: type, mesh: mesh };
+            objects.push(mesh); // Add to raycasting list
+            world[key] = { type: type, mesh: mesh }; // Add to world dictionary
         }
 
-        function removeVoxel(x, y, z) {
+         function removeVoxel(x, y, z) {
+            x = Math.floor(x);
+            y = Math.floor(y);
+            z = Math.floor(z);
             const key = getVoxelKey(x, y, z);
             const voxelData = world[key];
+
             if (voxelData) {
                 scene.remove(voxelData.mesh);
                 const index = objects.indexOf(voxelData.mesh);
-                if (index > -1) objects.splice(index, 1);
-                // Optional: Dispose geometry/material for large worlds
-                // voxelData.mesh.geometry.dispose();
-                // (Handle material array disposal if needed)
-                delete world[key];
-                return true;
+                if (index > -1) {
+                    objects.splice(index, 1); // Remove from raycasting list
+                }
+                 // Optional: Dispose geometry/material if concerned about memory leaks
+                 // voxelData.mesh.geometry.dispose();
+                 // (material disposal is more complex if it's an array)
+                delete world[key]; // Remove from world dictionary
+                return true; // Indicate success
             }
-            return false;
+            return false; // Indicate nothing was removed
         }
 
         // --- World Generation ---
         function generateWorld() {
-            // Flat world
+            // Simple flat world base
             for (let x = -worldWidth / 2; x < worldWidth / 2; x++) {
                 for (let z = -worldDepth / 2; z < worldDepth / 2; z++) {
                     for (let y = 0; y < groundHeight; y++) {
                         let type = 'stone';
-                         if (y === groundHeight - 1) type = 'grass';
-                         else if (y >= groundHeight - 3) type = 'dirt';
+                         if (y === groundHeight - 1) type = 'grass'; // Top layer grass
+                         else if (y >= groundHeight - 3) type = 'dirt'; // Dirt below grass
                          addVoxel(x, y, z, type);
                     }
                 }
             }
-             // Simple "trees"
-            for (let i = 0; i < 5; i++) {
+             // Add simple "trees"
+            for (let i = 0; i < 5; i++) { // Add 5 trees
                 const treeX = Math.floor(Math.random() * worldWidth - worldWidth / 2);
                 const treeZ = Math.floor(Math.random() * worldDepth - worldDepth / 2);
-                const treeHeight = 4 + Math.floor(Math.random() * 3);
+                const treeHeight = 4 + Math.floor(Math.random() * 3); // Random height 4-6 blocks
                 const groundKey = getVoxelKey(treeX, groundHeight - 1, treeZ);
 
+                 // Only place tree if the base block is grass
                  if (world[groundKey] && world[groundKey].type === 'grass') {
+                     // Trunk
                      for(let y = groundHeight; y < groundHeight + treeHeight; y++) {
                          addVoxel(treeX, y, treeZ, 'wood');
                      }
-                    const leavesY = groundHeight + treeHeight;
-                    for(let lx = -2; lx <= 2; lx++) {
+                     // Leaves (simple cube cluster)
+                    const leavesY = groundHeight + treeHeight; // Base Y level for leaves
+                    for(let lx = -2; lx <= 2; lx++) { // Iterate in a 5x5 horizontal area
                         for(let lz = -2; lz <= 2; lz++) {
-                            for(let ly = 0; ly <= 2; ly++) {
-                                if (Math.abs(lx) === 2 && Math.abs(lz) === 2) continue;
-                                if (ly === 2 && (Math.abs(lx) > 1 || Math.abs(lz) > 1)) continue;
+                            for(let ly = 0; ly <= 2; ly++) { // Iterate 3 blocks high
+                                // Pruning some leaves for a more rounded shape
+                                if (Math.abs(lx) === 2 && Math.abs(lz) === 2) continue; // Skip corners of outer layer
+                                if (ly === 2 && (Math.abs(lx) > 1 || Math.abs(lz) > 1)) continue; // Skip outer edges of top layer
+
                                 const currentY = leavesY + ly;
                                 const currentX = treeX + lx;
                                 const currentZ = treeZ + lz;
+
+                                // Skip the very center bottom block (where trunk ends)
                                 if (lx === 0 && lz === 0 && ly < 1) continue;
+
                                 const key = getVoxelKey(currentX, currentY, currentZ);
-                                if (!world[key]) {
+                                if (!world[key]) { // Only place leaves in empty air blocks
                                      addVoxel(currentX, currentY, currentZ, 'leaves');
                                 }
                             }
@@ -311,85 +374,94 @@
             }
         }
 
-        // --- Toolbar Selection Update Function (NEW) ---
+        // --- Toolbar UI Management ---
+        // Updates the visual selection highlight on the toolbar
         function updateToolbarSelection() {
             document.querySelectorAll('#toolbar .tool-button').forEach(btn => {
-                btn.classList.remove('selected');
+                btn.classList.remove('selected'); // Remove selected from all
             });
             const selectedButton = document.getElementById(`tool-${currentTool}`);
             if (selectedButton) {
-                selectedButton.classList.add('selected');
+                selectedButton.classList.add('selected'); // Add selected to the current one
             } else {
                  console.error(`Toolbar button not found for type: ${currentTool}`);
             }
         }
 
-        // --- Toolbar Setup Function (Modified) ---
+        // Creates the toolbar buttons based on toolTypes
         function setupToolbar() {
-            // Use the ordered toolTypes array
             toolTypes.forEach(type => {
                 const url = textureUrls[type];
                 const button = document.createElement('div');
                 button.id = `tool-${type}`;
                 button.classList.add('tool-button');
-                button.dataset.type = type;
+                button.dataset.type = type; // Store type for click handler
 
                 if (url) {
                     button.style.backgroundImage = `url(${url})`;
                 } else {
-                    button.style.backgroundColor = '#ff00ff';
+                    // Fallback visual cue if URL is missing
+                    button.style.backgroundColor = '#ff00ff'; // Bright pink
                     console.warn(`Missing texture URL for toolbar type: ${type}`);
                 }
 
+                // Add click listener to select the tool
                 button.addEventListener('click', () => {
-                    // Update both name and index when clicking
-                    currentTool = type;
-                    currentToolIndex = toolTypes.indexOf(type);
-                    updateToolbarSelection(); // Use the update function
+                    currentTool = type; // Update tool name
+                    currentToolIndex = toolTypes.indexOf(type); // Update index
+                    updateToolbarSelection(); // Update visual highlight
                 });
 
-                toolbar.appendChild(button);
+                toolbar.appendChild(button); // Add the button to the toolbar div
             });
 
-            // Set initial selection visually
+            // Set initial selection visually after creating all buttons
             updateToolbarSelection();
         }
 
 
-        // --- Initialization Function (init - Modified) ---
+        // --- Initialization Function ---
         function init() {
+            // --- Scene ---
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87ceeb);
-            scene.fog = new THREE.Fog(0x87ceeb, 10, 90);
+            scene.background = new THREE.Color(0x87ceeb); // Sky blue
+            scene.fog = new THREE.Fog(0x87ceeb, 10, 90); // Fog matches background
 
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
-            camera.position.set(0, groundHeight + playerHeight, 5);
+            // --- Camera ---
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100); // Near/Far planes
+            camera.position.set(0, groundHeight + playerHeight, 5); // Start above ground
 
-            renderer = new THREE.WebGLRenderer({ antialias: false }); // Turn off AA for sharper pixels maybe?
+            // --- Renderer ---
+            renderer = new THREE.WebGLRenderer({ antialias: false }); // Set true for smoother edges (potential performance cost)
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setPixelRatio(window.devicePixelRatio); // Adjust for high-DPI screens
             document.body.appendChild(renderer.domElement);
 
-            const ambientLight = new THREE.AmbientLight(0xcccccc, 0.9);
+            // --- Lighting ---
+            const ambientLight = new THREE.AmbientLight(0xcccccc, 0.9); // Soft ambient light
             scene.add(ambientLight);
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
-            directionalLight.position.set(50, 80, 40);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0); // Sun light
+            directionalLight.position.set(50, 80, 40); // Angle the sun
             scene.add(directionalLight);
 
+             // --- Controls (Pointer Lock) ---
             controls = new PointerLockControls(camera, document.body);
-            scene.add(controls.getObject());
+            scene.add(controls.getObject()); // Add the controls object (which contains the camera) to the scene
 
+            // Lock pointer on instruction click
             instructions.addEventListener('click', () => controls.lock());
+
+            // Handle locking/unlocking the cursor
             controls.addEventListener('lock', () => {
                 instructions.style.display = 'none';
                 blocker.style.display = 'none';
             });
             controls.addEventListener('unlock', () => {
-                blocker.style.display = 'flex';
-                instructions.style.display = '';
+                blocker.style.display = 'flex'; // Use flex to keep centering
+                instructions.style.display = ''; // Show instructions again
             });
 
-            // --- Keyboard Input --- (No changes needed here)
+             // --- Keyboard Input ---
             const onKeyDown = (event) => {
                 switch (event.code) {
                     case 'ArrowUp': case 'KeyW': moveForward = true; break;
@@ -397,16 +469,18 @@
                     case 'ArrowDown': case 'KeyS': moveBackward = true; break;
                     case 'ArrowRight': case 'KeyD': moveRight = true; break;
                     case 'Space':
+                         // Simple ground check for jumping
                          const playerY = controls.getObject().position.y;
-                         const groundCheckY = Math.floor(playerY - playerHeight - 0.1);
+                         // Check voxel slightly below player feet
+                         const groundCheckY = Math.floor(playerY - playerHeight - 0.01);
                          const groundCheckKey = getVoxelKey(
                              Math.floor(controls.getObject().position.x),
                              groundCheckY,
                              Math.floor(controls.getObject().position.z)
                          );
-                         // More robust ground check - allow jump even if slightly above due to float precision
-                         const onGround = world[groundCheckKey] || (playerY <= groundHeight + playerHeight + 0.01);
-                         if (onGround && velocity.y <= 0) { // Allow jump if on ground and not already moving up significantly
+                         // Allow jump if on a block OR very close to base ground level, and not already moving up fast
+                         const onGround = world[groundCheckKey] || playerY <= playerHeight + 0.01;
+                         if (onGround && velocity.y <= 0.1) { // Check velocity.y to prevent double-jumping
                              velocity.y = jumpVelocity;
                          }
                          break;
@@ -426,32 +500,26 @@
             document.addEventListener('keyup', onKeyUp);
 
 
-            // --- Mouse Input (Block Placement/Removal) --- (No changes needed here)
+            // --- Mouse Input (Block Placement/Removal) ---
              window.addEventListener('mousedown', (event) => {
-                 if (!controls.isLocked) return;
+                 if (!controls.isLocked) return; // Only interact when playing
                  const intersection = getIntersection();
-                 if (!intersection) return;
-
-                 // intersection.point is the exact point in 3D space where the click landed
-                 // intersection.face.normal is the vector pointing outwards from the clicked face
-                 // intersection.object is the mesh that was clicked
+                 if (!intersection) return; // No block intersected
 
                  const obj = intersection.object;
-                 const hitCoords = obj.userData; // These are the integer {x, y, z} coords of the hit block
+                 const hitCoords = obj.userData; // Get {x, y, z} of the clicked block
 
-                 // Ensure we actually hit a world block with coordinates
+                 // Ensure we clicked a valid world block with coordinates
                  if (!hitCoords || typeof hitCoords.x === 'undefined') {
                      console.log("Clicked on non-world object or object missing coords.");
                      return;
                  }
 
-                 const normal = intersection.face.normal;
+                 const normal = intersection.face.normal; // Normal vector of the clicked face
 
                  if (event.button === 0) { // Left click - Place block
                      // --- CORRECTED PLACEMENT LOGIC ---
-                     // Calculate the integer coordinates of the voxel where the new block should be placed.
-                     // We simply add the normal's components (rounded to ensure they are -1, 0, or 1)
-                     // to the integer coordinates of the block that was hit.
+                     // Calculate integer coords of the adjacent voxel using the face normal
                      const placeCoords = {
                          x: hitCoords.x + Math.round(normal.x),
                          y: hitCoords.y + Math.round(normal.y),
@@ -459,41 +527,35 @@
                      };
                      // --- End Corrected Logic ---
 
-                     // --- Player Collision Check (Refined) ---
+                     // --- Player Collision Check ---
                      const playerPos = controls.getObject().position;
                      const playerVoxelX = Math.floor(playerPos.x);
-                     // Calculate the voxel the player's feet are primarily in
-                     const playerVoxelYFeet = Math.floor(playerPos.y - playerHeight + 0.01); // Small epsilon helps with floor rounding
-                     // Calculate the voxel the player's head is primarily in
-                     const playerVoxelYHead = Math.floor(playerPos.y - 0.1); // Check slightly below camera position
+                     const playerVoxelYFeet = Math.floor(playerPos.y - playerHeight + 0.01); // Voxel at feet
+                     const playerVoxelYHead = Math.floor(playerPos.y - 0.1); // Voxel at head
                      const playerVoxelZ = Math.floor(playerPos.z);
 
-                     // Check if the target placement voxel is the same as the player's feet voxel
+                     // Check if trying to place in the voxel occupied by player's feet or head
                      const isAtPlayerFeet = (placeCoords.x === playerVoxelX &&
                                              placeCoords.z === playerVoxelZ &&
                                              placeCoords.y === playerVoxelYFeet);
-
-                     // Check if the target placement voxel is the same as the player's head voxel
                      const isAtPlayerHead = (placeCoords.x === playerVoxelX &&
                                              placeCoords.z === playerVoxelZ &&
                                              placeCoords.y === playerVoxelYHead);
                      // --- End Player Collision Check ---
 
-
-                     // Place the block if it's not inside the player's occupied voxels
-                     if (!isAtPlayerFeet && !isAtPlayerHead) {
+                     if (!isAtPlayerFeet && !isAtPlayerHead) { // Only place if not inside player
                          addVoxel(placeCoords.x, placeCoords.y, placeCoords.z, currentTool);
                      } else {
                          console.log("Cannot place block inside player");
                      }
 
                  } else if (event.button === 2) { // Right click - Remove block
-                    // Removal logic remains the same - uses the coordinates of the block hit
+                    // Remove the block that was clicked
                     removeVoxel(hitCoords.x, hitCoords.y, hitCoords.z);
                  }
              });
 
-            // --- Scroll Wheel Input (NEW) ---
+            // --- Scroll Wheel Input (Tool Switching) ---
             window.addEventListener('wheel', (event) => {
                 if (!controls.isLocked) return; // Only change tool when playing
 
@@ -513,139 +575,184 @@
                     }
                 }
 
-                // Update the current tool based on the new index
-                currentTool = toolTypes[currentToolIndex];
-                // Update the visual selection in the toolbar
-                updateToolbarSelection();
+                currentTool = toolTypes[currentToolIndex]; // Update tool name
+                updateToolbarSelection(); // Update toolbar highlight
 
-            }, { passive: false }); // passive: false needed for preventDefault()
+            }, { passive: false }); // Required for preventDefault() on wheel events
 
+
+            // --- Get References to Info Display Elements ---
+            fpsValueSpan = document.getElementById('fpsValue');
+            posXSpan = document.getElementById('posX');
+            posYSpan = document.getElementById('posY');
+            posZSpan = document.getElementById('posZ');
+            viewYawSpan = document.getElementById('viewYaw');
+            viewPitchSpan = document.getElementById('viewPitch');
 
             // --- World Generation & UI Setup ---
             generateWorld();
-            setupToolbar(); // Now correctly initializes selection
+            setupToolbar(); // Create toolbar buttons
 
-            // --- Add Voxel Outline ---
+            // --- Add Voxel Outline to Scene ---
             scene.add(voxelOutlineMesh);
 
-            // --- Resize Listener ---
+            // --- Window Resize Listener ---
             window.addEventListener('resize', onWindowResize);
         }
 
-        // --- Resize Handler (onWindowResize) ---
+        // --- Resize Handler ---
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // --- Raycasting Function (getIntersection) ---
+        // --- Raycasting Function ---
          function getIntersection() {
-            raycaster.setFromCamera(pointer, camera);
-            const intersects = raycaster.intersectObjects(objects, false); // Don't check children recursively
+            raycaster.setFromCamera(pointer, camera); // Cast ray from camera center
+            const intersects = raycaster.intersectObjects(objects, false); // Check against block meshes
              // Filter out the outline mesh itself if it somehow gets intersected
              const validIntersects = intersects.filter(intersect => intersect.object !== voxelOutlineMesh);
-             return validIntersects.length > 0 ? validIntersects[0] : null;
+             return validIntersects.length > 0 ? validIntersects[0] : null; // Return closest valid intersection
          }
 
-        // --- Update Voxel Outline ---
+        // --- Update Voxel Outline Position/Visibility ---
         function updateVoxelOutline() {
              const intersection = getIntersection();
+             // Check if we hit a valid block with coordinates
              if (intersection && intersection.object.userData && typeof intersection.object.userData.x !== 'undefined') {
-                // Use the intersected block's position directly
-                const blockPos = intersection.object.position;
-                voxelOutlineMesh.position.copy(blockPos);
+                const blockPos = intersection.object.position; // Center position of the hit block
+                voxelOutlineMesh.position.copy(blockPos); // Move outline to match
                 voxelOutlineMesh.visible = true;
              } else {
-                 voxelOutlineMesh.visible = false;
+                 voxelOutlineMesh.visible = false; // Hide if not looking at a block
              }
         }
 
-        // --- Animation Loop (animate - minor collision refinement) ---
+        // --- Animation Loop ---
         function animate() {
-            requestAnimationFrame(animate);
+            requestAnimationFrame(animate); // Schedule next frame
             const time = performance.now();
-            const delta = Math.min(0.05, (time - prevTime) / 1000);
+            // Calculate delta time, clamp to prevent large jumps on lag/pause
+            const delta = Math.max(0.0001, Math.min(0.05, (time - prevTime) / 1000));
+            prevTime = time; // Update prevTime for next frame
 
-             if (controls.isLocked) {
+            // --- Calculate and Display Info ---
+            // Throttle info updates slightly if needed (e.g., every 100ms)
+            // if (time - lastInfoUpdateTime > 100) {
+                const fps = 1 / delta;
+                const playerPos = controls.getObject().position;
+                const playerRot = controls.getObject().rotation; // Euler angles (YXZ order)
+
+                const yawDeg = THREE.MathUtils.radToDeg(playerRot.y);
+                const pitchDeg = THREE.MathUtils.radToDeg(playerRot.x);
+
+                fpsValueSpan.textContent = Math.round(fps);
+                posXSpan.textContent = playerPos.x.toFixed(2);
+                posYSpan.textContent = playerPos.y.toFixed(2);
+                posZSpan.textContent = playerPos.z.toFixed(2);
+                // Display yaw wrapped 0-360
+                viewYawSpan.textContent = ((yawDeg % 360 + 360) % 360).toFixed(1);
+                viewPitchSpan.textContent = pitchDeg.toFixed(1);
+                // lastInfoUpdateTime = time;
+            // }
+            // --- End Info Display Update ---
+
+
+             if (controls.isLocked) { // Only update physics and interactions if game is active
+                 // --- Physics ---
+                 // Apply damping (friction/air resistance)
                  velocity.x -= velocity.x * 10.0 * delta;
                  velocity.z -= velocity.z * 10.0 * delta;
+
+                 // Apply gravity
                  velocity.y -= gravity * delta;
 
+                 // Get input direction
                  direction.z = Number(moveForward) - Number(moveBackward);
                  direction.x = Number(moveRight) - Number(moveLeft);
-                 direction.normalize();
+                 direction.normalize(); // Ensures consistent speed diagonally
 
+                 // Apply movement impulse based on input
                  const currentSpeed = playerSpeed * delta;
                  if (moveForward || moveBackward) velocity.z -= direction.z * currentSpeed;
                  if (moveLeft || moveRight) velocity.x -= direction.x * currentSpeed;
 
-                 // --- Collision Detection Refined ---
+                 // --- Collision Detection (Simplified) ---
+                 // TODO: Improve collision - this is basic and can clip/stick
                  const playerPos = controls.getObject().position;
-                 const futurePosX = playerPos.x - velocity.x * delta; // Predicted horizontal X pos
-                 const futurePosZ = playerPos.z - velocity.z * delta; // Predicted horizontal Z pos
-                 const futureFeetY = playerPos.y + velocity.y * delta - playerHeight; // Predicted feet pos
-                 const futureHeadY = playerPos.y + velocity.y * delta + 0.1; // Predicted head pos
+                 const futureFeetY = playerPos.y + velocity.y * delta - playerHeight;
+                 const futureHeadY = playerPos.y + velocity.y * delta + 0.1; // Point slightly above feet level
 
                  const voxelX = Math.floor(playerPos.x);
                  const voxelZ = Math.floor(playerPos.z);
-                 const nextVoxelX = Math.floor(futurePosX);
-                 const nextVoxelZ = Math.floor(futurePosZ);
                  const groundVoxelY = Math.floor(futureFeetY); // Voxel below predicted feet
                  const headVoxelY = Math.floor(futureHeadY); // Voxel at predicted head
 
                  // Ground Collision
-                 const groundKey = getVoxelKey(voxelX, groundVoxelY, voxelZ); // Check below current horizontal pos
-                 if (velocity.y <= 0 && world[groundKey] && futureFeetY < groundVoxelY + 1) {
-                     velocity.y = 0;
-                     playerPos.y = groundVoxelY + 1 + playerHeight; // Snap
+                 const groundKey = getVoxelKey(voxelX, groundVoxelY, voxelZ);
+                 if (velocity.y < 0 && world[groundKey] && futureFeetY <= groundVoxelY + 1) {
+                     velocity.y = 0; // Stop falling
+                     playerPos.y = groundVoxelY + 1 + playerHeight; // Snap to ground
                  }
 
                  // Ceiling Collision
                  const headKey = getVoxelKey(voxelX, headVoxelY, voxelZ);
-                 if (velocity.y > 0 && world[headKey] && futureHeadY > headVoxelY) {
-                     velocity.y = 0;
-                     playerPos.y = headVoxelY - 0.15; // Snap below, slight buffer
+                 if (velocity.y > 0 && world[headKey] && futureHeadY >= headVoxelY) {
+                     velocity.y = 0; // Stop rising
+                     playerPos.y = headVoxelY - 0.15; // Snap below ceiling
                  }
 
-                 // --- Horizontal Collision (Very Basic - needs improvement for sliding) ---
-                 // Check X direction
-                const checkX = (velocity.x < 0 ? Math.floor(futurePosX - 0.3) : Math.floor(futurePosX + 0.3)); // Check slightly ahead in X
-                const collisionKeyX1 = getVoxelKey(checkX, Math.floor(playerPos.y - playerHeight + 0.1), voxelZ); // Feet level
-                const collisionKeyX2 = getVoxelKey(checkX, Math.floor(playerPos.y - 0.1), voxelZ); // Head level (approx)
-                if (world[collisionKeyX1] || world[collisionKeyX2]) {
-                    velocity.x = 0;
-                }
+                 // --- Basic Horizontal Collision ---
+                 // Predict next position based on X velocity
+                 const nextX = playerPos.x - velocity.x * delta;
+                 const checkVoxelX = Math.floor(nextX + Math.sign(-velocity.x) * 0.3); // Check slightly ahead in movement dir
+                 const collisionKeyX1 = getVoxelKey(checkVoxelX, Math.floor(playerPos.y - playerHeight + 0.1), voxelZ); // Check at feet level
+                 const collisionKeyX2 = getVoxelKey(checkVoxelX, Math.floor(playerPos.y - 0.1), voxelZ); // Check at head level
+                 if(world[collisionKeyX1] || world[collisionKeyX2]) {
+                     velocity.x = 0; // Stop horizontal X movement
+                 }
 
-                // Check Z direction
-                const checkZ = (velocity.z < 0 ? Math.floor(futurePosZ - 0.3) : Math.floor(futurePosZ + 0.3)); // Check slightly ahead in Z
-                const collisionKeyZ1 = getVoxelKey(voxelX, Math.floor(playerPos.y - playerHeight + 0.1), checkZ); // Feet level
-                const collisionKeyZ2 = getVoxelKey(voxelX, Math.floor(playerPos.y - 0.1), checkZ); // Head level (approx)
-                 if (world[collisionKeyZ1] || world[collisionKeyZ2]) {
-                    velocity.z = 0;
-                }
+                 // Predict next position based on Z velocity
+                 const nextZ = playerPos.z - velocity.z * delta;
+                 const checkVoxelZ = Math.floor(nextZ + Math.sign(-velocity.z) * 0.3); // Check slightly ahead in movement dir
+                 const collisionKeyZ1 = getVoxelKey(voxelX, Math.floor(playerPos.y - playerHeight + 0.1), checkVoxelZ); // Check at feet level
+                 const collisionKeyZ2 = getVoxelKey(voxelX, Math.floor(playerPos.y - 0.1), checkVoxelZ); // Check at head level
+                 if(world[collisionKeyZ1] || world[collisionKeyZ2]) {
+                     velocity.z = 0; // Stop horizontal Z movement
+                 }
+                 // --- End Collision ---
 
 
-                 // Apply Movement
+                 // Apply movement based on calculated velocity
                  controls.moveRight(-velocity.x * delta);
                  controls.moveForward(-velocity.z * delta);
-                 playerPos.y += velocity.y * delta;
+                 controls.getObject().position.y += velocity.y * delta; // Apply vertical velocity separately
 
-                 if (moveDown) playerPos.y -= currentSpeed * 0.5 * delta;
-
-                 if (playerPos.y < playerHeight) {
-                     velocity.y = 0;
-                     playerPos.y = playerHeight;
+                 // Apply downward movement if Shift/Ctrl is pressed
+                 if (moveDown) {
+                    // Simple downward move - could implement better crouching/collision
+                    controls.getObject().position.y -= 5.0 * delta; // Adjust speed as needed
                  }
 
+                 // Prevent falling through the "void" (optional boundary)
+                 if (playerPos.y < -20) { // Arbitrary bottom limit
+                     // Reset position or handle death/respawn
+                     playerPos.set(0, groundHeight + playerHeight + 5, 0);
+                     velocity.set(0,0,0);
+                 }
+
+                 // Update the voxel outline based on where the player is looking
                  updateVoxelOutline();
 
              } else {
+                 // Reset velocity if paused to prevent sudden movement on resume
                  velocity.set(0, 0, 0);
+                 // Hide outline when paused
                  voxelOutlineMesh.visible = false;
              }
 
-            prevTime = time;
+            // Render the scene
             renderer.render(scene, camera);
         }
 
