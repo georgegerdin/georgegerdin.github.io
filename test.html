@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple 3D Block Game (Three.js)</title>
+    <title>Simple 3D Block Game (Three.js) - Improved Collision</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: sans-serif; background-color: #7ec0ee; }
         canvas { display: block; }
@@ -104,9 +104,10 @@
         <div id="instructions">
             <h1>Simple 3D Blocks</h1>
             <p>Click to Play</p>
-            <p>(W, A, S, D = Move, SPACE = Jump, SHIFT/CTRL = Down, MOUSE = Look)</p>
+            <p>(W, A, S, D = Move, SPACE = Jump, MOUSE = Look)</p>
             <p>Left Click = Place Block, Right Click = Remove Block</p>
             <p>SCROLL WHEEL = Change Block Type</p>
+             <p style="color: green;">Collision Improved!</p>
         </div>
     </div>
 
@@ -158,15 +159,19 @@
         let moveBackward = false;
         let moveLeft = false;
         let moveRight = false;
-        let moveDown = false; // For Shift/Ctrl key
+        let moveDown = false; // Keep variable but currently disabled in key handlers
+        let canJump = false; // Track if player is on ground
 
         // Physics/Movement variables
         const velocity = new THREE.Vector3();
         const direction = new THREE.Vector3();
         const gravity = 30.0;
         const jumpVelocity = 10.0;
-        const playerSpeed = 400.0;
-        const playerHeight = 1.8; // How tall the player is (affects collision and view height)
+        const playerSpeed = 400.0; // Scaled by delta in movement calculation
+        const playerHeight = 1.8; // How tall the player is (eye level to feet)
+        const playerWidth = 0.6; // Player bounding box width/depth (less than 1 block)
+        const playerHalfWidth = playerWidth / 2;
+        const playerHalfDepth = playerWidth / 2; // Assuming square base for simplicity
 
         // DOM Elements
         const blocker = document.getElementById('blocker');
@@ -398,7 +403,13 @@
                 button.dataset.type = type; // Store type for click handler
 
                 if (url) {
-                    button.style.backgroundImage = `url(${url})`;
+                    // Use placeholder images if actual textures aren't available locally
+                    // Replace these with actual paths if you have the images
+                    const placeholderBase = 'https://via.placeholder.com/40/';
+                    const colors = { grass: '009900', dirt: '8B4513', stone: '808080', wood: 'A0522D', leaves: '228B22', sand: 'F4A460' };
+                    button.style.backgroundImage = `url(${placeholderBase}${colors[type] || 'CCCCCC'}?text=${type.substring(0,1).toUpperCase()})`; // Simple fallback
+                    // For local files (if they exist in the same folder):
+                    // button.style.backgroundImage = `url(${url})`;
                 } else {
                     // Fallback visual cue if URL is missing
                     button.style.backgroundColor = '#ff00ff'; // Bright pink
@@ -420,6 +431,49 @@
         }
 
 
+        // --- NEW: Player AABB Helper ---
+        function getPlayerAABB(position) {
+            // position.y is the eye level, feet are at position.y - playerHeight
+            return new THREE.Box3(
+                new THREE.Vector3(position.x - playerHalfWidth, position.y - playerHeight, position.z - playerHalfDepth),
+                new THREE.Vector3(position.x + playerHalfWidth, position.y,                position.z + playerHalfDepth)
+            );
+        }
+
+        // --- NEW: Collision Check Function ---
+        function checkCollision(playerPos) {
+            const playerAABB = getPlayerAABB(playerPos);
+            // Determine the range of world voxels the player AABB *might* overlap with
+            const minX = Math.floor(playerAABB.min.x);
+            const maxX = Math.floor(playerAABB.max.x);
+            const minY = Math.floor(playerAABB.min.y);
+            const maxY = Math.floor(playerAABB.max.y);
+            const minZ = Math.floor(playerAABB.min.z);
+            const maxZ = Math.floor(playerAABB.max.z);
+
+            // Iterate only through the potentially overlapping voxels
+            for (let x = minX; x <= maxX; x++) {
+                for (let y = minY; y <= maxY; y++) {
+                    for (let z = minZ; z <= maxZ; z++) {
+                        const key = getVoxelKey(x, y, z);
+                        if (world[key]) {
+                            // Create a bounding box for the world block
+                            const blockAABB = new THREE.Box3(
+                                new THREE.Vector3(x, y, z),
+                                new THREE.Vector3(x + 1, y + 1, z + 1)
+                            );
+                            // Check if the player's AABB actually intersects this block's AABB
+                            if (playerAABB.intersectsBox(blockAABB)) {
+                                return true; // Collision detected
+                            }
+                        }
+                    }
+                }
+            }
+            return false; // No collision found within the potential range
+        }
+
+
         // --- Initialization Function ---
         function init() {
             // --- Scene ---
@@ -429,7 +483,8 @@
 
             // --- Camera ---
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100); // Near/Far planes
-            camera.position.set(0, groundHeight + playerHeight, 5); // Start above ground
+            // Start player slightly higher to avoid initial ground collision issues
+            camera.position.set(0, groundHeight + playerHeight + 0.5, 5);
 
             // --- Renderer ---
             renderer = new THREE.WebGLRenderer({ antialias: false }); // Set true for smoother edges (potential performance cost)
@@ -463,28 +518,19 @@
 
              // --- Keyboard Input ---
             const onKeyDown = (event) => {
+                 if (event.repeat) return; // Prevent holding key triggering multiple jumps etc.
                 switch (event.code) {
                     case 'ArrowUp': case 'KeyW': moveForward = true; break;
                     case 'ArrowLeft': case 'KeyA': moveLeft = true; break;
                     case 'ArrowDown': case 'KeyS': moveBackward = true; break;
                     case 'ArrowRight': case 'KeyD': moveRight = true; break;
                     case 'Space':
-                         // Simple ground check for jumping
-                         const playerY = controls.getObject().position.y;
-                         // Check voxel slightly below player feet
-                         const groundCheckY = Math.floor(playerY - playerHeight - 0.01);
-                         const groundCheckKey = getVoxelKey(
-                             Math.floor(controls.getObject().position.x),
-                             groundCheckY,
-                             Math.floor(controls.getObject().position.z)
-                         );
-                         // Allow jump if on a block OR very close to base ground level, and not already moving up fast
-                         const onGround = world[groundCheckKey] || playerY <= playerHeight + 0.01;
-                         if (onGround && velocity.y <= 0.1) { // Check velocity.y to prevent double-jumping
+                         if (canJump) { // Use the canJump flag set by physics
                              velocity.y = jumpVelocity;
+                             canJump = false; // Prevent double jump until next ground contact
                          }
                          break;
-                    case 'ShiftLeft': case 'ControlLeft': moveDown = true; break;
+                    // case 'ShiftLeft': case 'ControlLeft': moveDown = true; break; // Disabled for now
                 }
             };
              const onKeyUp = (event) => {
@@ -493,7 +539,7 @@
                     case 'ArrowLeft': case 'KeyA': moveLeft = false; break;
                     case 'ArrowDown': case 'KeyS': moveBackward = false; break;
                     case 'ArrowRight': case 'KeyD': moveRight = false; break;
-                    case 'ShiftLeft': case 'ControlLeft': moveDown = false; break;
+                    // case 'ShiftLeft': case 'ControlLeft': moveDown = false; break; // Disabled for now
                 }
             };
             document.addEventListener('keydown', onKeyDown);
@@ -515,38 +561,31 @@
                      return;
                  }
 
-                 const normal = intersection.face.normal; // Normal vector of the clicked face
+                 const normal = intersection.face.normal.clone(); // Use the normal of the face clicked
 
                  if (event.button === 0) { // Left click - Place block
-                     // --- CORRECTED PLACEMENT LOGIC ---
                      // Calculate integer coords of the adjacent voxel using the face normal
                      const placeCoords = {
-                         x: hitCoords.x + Math.round(normal.x),
-                         y: hitCoords.y + Math.round(normal.y),
-                         z: hitCoords.z + Math.round(normal.z)
+                         x: hitCoords.x + normal.x,
+                         y: hitCoords.y + normal.y,
+                         z: hitCoords.z + normal.z
                      };
-                     // --- End Corrected Logic ---
 
-                     // --- Player Collision Check ---
-                     const playerPos = controls.getObject().position;
-                     const playerVoxelX = Math.floor(playerPos.x);
-                     const playerVoxelYFeet = Math.floor(playerPos.y - playerHeight + 0.01); // Voxel at feet
-                     const playerVoxelYHead = Math.floor(playerPos.y - 0.1); // Voxel at head
-                     const playerVoxelZ = Math.floor(playerPos.z);
+                     // --- Player Collision Check (using AABB) ---
+                     // Create an AABB for the block we intend to place
+                     const blockAABB = new THREE.Box3(
+                         new THREE.Vector3(placeCoords.x, placeCoords.y, placeCoords.z),
+                         new THREE.Vector3(placeCoords.x + 1, placeCoords.y + 1, placeCoords.z + 1)
+                     );
+                     // Get the player's current AABB
+                     const playerAABB = getPlayerAABB(controls.getObject().position);
 
-                     // Check if trying to place in the voxel occupied by player's feet or head
-                     const isAtPlayerFeet = (placeCoords.x === playerVoxelX &&
-                                             placeCoords.z === playerVoxelZ &&
-                                             placeCoords.y === playerVoxelYFeet);
-                     const isAtPlayerHead = (placeCoords.x === playerVoxelX &&
-                                             placeCoords.z === playerVoxelZ &&
-                                             placeCoords.y === playerVoxelYHead);
-                     // --- End Player Collision Check ---
-
-                     if (!isAtPlayerFeet && !isAtPlayerHead) { // Only place if not inside player
+                     // Check if the new block would intersect the player
+                     if (!playerAABB.intersectsBox(blockAABB)) {
                          addVoxel(placeCoords.x, placeCoords.y, placeCoords.z, currentTool);
                      } else {
                          console.log("Cannot place block inside player");
+                         // Maybe provide user feedback here? Sound effect? Message?
                      }
 
                  } else if (event.button === 2) { // Right click - Remove block
@@ -631,7 +670,7 @@
 
         // --- Animation Loop ---
         function animate() {
-            requestAnimationFrame(animate); // Schedule next frame
+            requestAnimationFrame(animate);
             const time = performance.now();
             // Calculate delta time, clamp to prevent large jumps on lag/pause
             const delta = Math.max(0.0001, Math.min(0.05, (time - prevTime) / 1000));
@@ -660,94 +699,146 @@
 
 
              if (controls.isLocked) { // Only update physics and interactions if game is active
-                 // --- Physics ---
-                 // Apply damping (friction/air resistance)
-                 velocity.x -= velocity.x * 10.0 * delta;
-                 velocity.z -= velocity.z * 10.0 * delta;
+                const playerPos = controls.getObject().position;
 
-                 // Apply gravity
-                 velocity.y -= gravity * delta;
+                // --- Apply Damping & Gravity ---
+                // Air resistance / friction
+                velocity.x -= velocity.x * 10.0 * delta;
+                velocity.z -= velocity.z * 10.0 * delta;
 
-                 // Get input direction
-                 direction.z = Number(moveForward) - Number(moveBackward);
-                 direction.x = Number(moveRight) - Number(moveLeft);
-                 direction.normalize(); // Ensures consistent speed diagonally
+                // Gravity
+                velocity.y -= gravity * delta;
 
-                 // Apply movement impulse based on input
-                 const currentSpeed = playerSpeed * delta;
-                 if (moveForward || moveBackward) velocity.z -= direction.z * currentSpeed;
-                 if (moveLeft || moveRight) velocity.x -= direction.x * currentSpeed;
+                // --- Calculate Movement Intent based on Input ---
+                direction.z = Number(moveForward) - Number(moveBackward);
+                direction.x = Number(moveRight) - Number(moveLeft);
+                direction.normalize(); // Ensures consistent speed diagonally
 
-                 // --- Collision Detection (Simplified) ---
-                 // TODO: Improve collision - this is basic and can clip/stick
-                 const playerPos = controls.getObject().position;
-                 const futureFeetY = playerPos.y + velocity.y * delta - playerHeight;
-                 const futureHeadY = playerPos.y + velocity.y * delta + 0.1; // Point slightly above feet level
-
-                 const voxelX = Math.floor(playerPos.x);
-                 const voxelZ = Math.floor(playerPos.z);
-                 const groundVoxelY = Math.floor(futureFeetY); // Voxel below predicted feet
-                 const headVoxelY = Math.floor(futureHeadY); // Voxel at predicted head
-
-                 // Ground Collision
-                 const groundKey = getVoxelKey(voxelX, groundVoxelY, voxelZ);
-                 if (velocity.y < 0 && world[groundKey] && futureFeetY <= groundVoxelY + 1) {
-                     velocity.y = 0; // Stop falling
-                     playerPos.y = groundVoxelY + 1 + playerHeight; // Snap to ground
-                 }
-
-                 // Ceiling Collision
-                 const headKey = getVoxelKey(voxelX, headVoxelY, voxelZ);
-                 if (velocity.y > 0 && world[headKey] && futureHeadY >= headVoxelY) {
-                     velocity.y = 0; // Stop rising
-                     playerPos.y = headVoxelY - 0.15; // Snap below ceiling
-                 }
-
-                 // --- Basic Horizontal Collision ---
-                 // Predict next position based on X velocity
-                 const nextX = playerPos.x - velocity.x * delta;
-                 const checkVoxelX = Math.floor(nextX + Math.sign(-velocity.x) * 0.3); // Check slightly ahead in movement dir
-                 const collisionKeyX1 = getVoxelKey(checkVoxelX, Math.floor(playerPos.y - playerHeight + 0.1), voxelZ); // Check at feet level
-                 const collisionKeyX2 = getVoxelKey(checkVoxelX, Math.floor(playerPos.y - 0.1), voxelZ); // Check at head level
-                 if(world[collisionKeyX1] || world[collisionKeyX2]) {
-                     velocity.x = 0; // Stop horizontal X movement
-                 }
-
-                 // Predict next position based on Z velocity
-                 const nextZ = playerPos.z - velocity.z * delta;
-                 const checkVoxelZ = Math.floor(nextZ + Math.sign(-velocity.z) * 0.3); // Check slightly ahead in movement dir
-                 const collisionKeyZ1 = getVoxelKey(voxelX, Math.floor(playerPos.y - playerHeight + 0.1), checkVoxelZ); // Check at feet level
-                 const collisionKeyZ2 = getVoxelKey(voxelX, Math.floor(playerPos.y - 0.1), checkVoxelZ); // Check at head level
-                 if(world[collisionKeyZ1] || world[collisionKeyZ2]) {
-                     velocity.z = 0; // Stop horizontal Z movement
-                 }
-                 // --- End Collision ---
+                const currentSpeed = playerSpeed * delta; // Scale speed by frame time
+                if (moveForward || moveBackward) velocity.z -= direction.z * currentSpeed;
+                if (moveLeft || moveRight) velocity.x -= direction.x * currentSpeed;
 
 
-                 // Apply movement based on calculated velocity
-                 controls.moveRight(-velocity.x * delta);
-                 controls.moveForward(-velocity.z * delta);
-                 controls.getObject().position.y += velocity.y * delta; // Apply vertical velocity separately
+                // --- Collision Detection & Resolution (Axis-by-Axis AABB) ---
 
-                 // Apply downward movement if Shift/Ctrl is pressed
-                 if (moveDown) {
-                    // Simple downward move - could implement better crouching/collision
-                    controls.getObject().position.y -= 5.0 * delta; // Adjust speed as needed
-                 }
+                // Store original position for potential resets if needed (though axis separation handles most cases)
+                // const originalPos = playerPos.clone();
 
-                 // Prevent falling through the "void" (optional boundary)
-                 if (playerPos.y < -20) { // Arbitrary bottom limit
-                     // Reset position or handle death/respawn
-                     playerPos.set(0, groundHeight + playerHeight + 5, 0);
-                     velocity.set(0,0,0);
-                 }
+                // --- 1. Resolve X-axis Collision ---
+                let nextX = playerPos.x + velocity.x * delta;
+                let tempPos = playerPos.clone(); // Use a temporary vector for checking
+                tempPos.x = nextX;
 
-                 // Update the voxel outline based on where the player is looking
-                 updateVoxelOutline();
+                if (checkCollision(tempPos)) {
+                    velocity.x = 0; // Stop horizontal movement on this axis
+                    // No need to adjust nextX here, just don't apply the velocity
+                } else {
+                    playerPos.x = nextX; // Apply movement if no collision
+                }
+
+                // --- 2. Resolve Z-axis Collision ---
+                let nextZ = playerPos.z + velocity.z * delta;
+                tempPos = playerPos.clone(); // Reset temp vector, using potentially updated X
+                tempPos.z = nextZ;
+
+                if (checkCollision(tempPos)) {
+                    velocity.z = 0; // Stop horizontal movement on this axis
+                } else {
+                    playerPos.z = nextZ; // Apply movement if no collision
+                }
+
+                // --- 3. Resolve Y-axis Collision ---
+                let nextY = playerPos.y + velocity.y * delta;
+                tempPos = playerPos.clone(); // Reset temp vector, using potentially updated X and Z
+                tempPos.y = nextY;
+
+                let isOnGround = false; // Reset ground status each frame before check
+                canJump = false; // Assume cannot jump unless ground detected
+
+                if (checkCollision(tempPos)) {
+                    if (velocity.y < 0) { // Moving down - hit ground
+                        // Find the exact ground level below the player's intended next foot position
+                        const playerFeetY = nextY - playerHeight;
+                        const checkMinX = Math.floor(playerPos.x - playerHalfWidth);
+                        const checkMaxX = Math.floor(playerPos.x + playerHalfWidth);
+                        const checkMinZ = Math.floor(playerPos.z - playerHalfDepth);
+                        const checkMaxZ = Math.floor(playerPos.z + playerHalfDepth);
+                        const checkYBelow = Math.floor(playerFeetY); // Integer Y coord below feet
+
+                        let highestGroundY = -Infinity;
+                        for (let cx = checkMinX; cx <= checkMaxX; cx++) {
+                            for (let cz = checkMinZ; cz <= checkMaxZ; cz++) {
+                                const key = getVoxelKey(cx, checkYBelow, cz);
+                                if (world[key]) {
+                                    highestGroundY = Math.max(highestGroundY, checkYBelow + 1); // Top surface is Y+1
+                                }
+                            }
+                        }
+
+                        // If ground was found nearby and the player is moving into/below it
+                        if (highestGroundY > -Infinity && playerFeetY <= highestGroundY) {
+                             playerPos.y = highestGroundY + playerHeight; // Snap feet exactly to ground surface
+                             isOnGround = true;
+                             canJump = true; // Now we can jump
+                        } else {
+                             // Collision detected, but maybe not directly below? Stop velocity anyway.
+                             // This might happen on sharp corners or complex geometry.
+                             playerPos.y = playerPos.y; // Keep current Y if snapping logic fails
+                        }
+                        velocity.y = 0; // Stop falling
+
+                    } else if (velocity.y > 0) { // Moving up - hit ceiling
+                        // Find the exact ceiling level above the player's intended next head position
+                        const playerHeadY = nextY;
+                        const checkMinX = Math.floor(playerPos.x - playerHalfWidth);
+                        const checkMaxX = Math.floor(playerPos.x + playerHalfWidth);
+                        const checkMinZ = Math.floor(playerPos.z - playerHalfDepth);
+                        const checkMaxZ = Math.floor(playerPos.z + playerHalfDepth);
+                        const checkYAbove = Math.floor(playerHeadY); // Integer Y coord at/above head
+
+                        let lowestCeilingY = Infinity;
+                        for (let cx = checkMinX; cx <= checkMaxX; cx++) {
+                             for (let cz = checkMinZ; cz <= checkMaxZ; cz++) {
+                                 const key = getVoxelKey(cx, checkYAbove, cz);
+                                 if (world[key]) {
+                                     lowestCeilingY = Math.min(lowestCeilingY, checkYAbove); // Bottom surface is Y
+                                 }
+                             }
+                         }
+
+                         // If ceiling was found nearby and player moving into/above it
+                         if (lowestCeilingY < Infinity && playerHeadY >= lowestCeilingY) {
+                              playerPos.y = lowestCeilingY - 0.01; // Snap head just below ceiling (small epsilon)
+                         } else {
+                              // Collision detected, but maybe not directly above? Stop velocity anyway.
+                              playerPos.y = playerPos.y; // Keep current Y if snapping logic fails
+                         }
+                         velocity.y = 0; // Stop rising
+                    }
+                } else {
+                    // No Y collision - apply the calculated vertical movement
+                    playerPos.y = nextY;
+                }
+
+
+                // --- Final Position is now set by the axis-by-axis checks ---
+
+
+                // --- Prevent falling through the void ---
+                if (playerPos.y < -20) { // Arbitrary bottom limit
+                    console.log("Fell out of world, resetting position.");
+                    playerPos.set(0, groundHeight + playerHeight + 5, 0); // Reset higher up
+                    velocity.set(0,0,0);
+                    canJump = false;
+                }
+
+                // Update the voxel outline based on where the player is looking
+                updateVoxelOutline();
 
              } else {
                  // Reset velocity if paused to prevent sudden movement on resume
                  velocity.set(0, 0, 0);
+                 canJump = false; // Can't jump while paused
                  // Hide outline when paused
                  voxelOutlineMesh.visible = false;
              }
