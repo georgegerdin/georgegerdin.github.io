@@ -675,98 +675,103 @@
             const delta = Math.max(0.0001, Math.min(0.05, (time - prevTime) / 1000));
             prevTime = time;
 
-            // --- Info Display Update ---
+            // --- Info Display Update (Reads directly from controls/camera for display) ---
             const fps = 1 / delta;
-            const playerPos = controls.getObject().position;
-            const playerRot = controls.getObject().rotation; // Euler angles (YXZ order)
+            const displayPos = controls.getObject().position; // Use camera pos for display
+            const playerRot = controls.getObject().rotation;
             const yawDeg = THREE.MathUtils.radToDeg(playerRot.y);
             const pitchDeg = THREE.MathUtils.radToDeg(playerRot.x);
             fpsValueSpan.textContent = Math.round(fps);
-            posXSpan.textContent = playerPos.x.toFixed(2);
-            posYSpan.textContent = playerPos.y.toFixed(2);
-            posZSpan.textContent = playerPos.z.toFixed(2);
+            posXSpan.textContent = displayPos.x.toFixed(2);
+            posYSpan.textContent = displayPos.y.toFixed(2);
+            posZSpan.textContent = displayPos.z.toFixed(2);
             viewYawSpan.textContent = ((yawDeg % 360 + 360) % 360).toFixed(1);
             viewPitchSpan.textContent = pitchDeg.toFixed(1);
             // --- End Info Display Update ---
 
              if (controls.isLocked) {
-                // --- Apply Damping & Gravity to existing velocity ---
-                velocity.x -= velocity.x * 10.0 * delta;
-                velocity.z -= velocity.z * 10.0 * delta;
-                velocity.y -= gravity * delta;
+                // Use playerState for physics simulation
+                const currentPos = playerState.position;
+                const currentVel = playerState.velocity;
+
+                // --- Apply Damping & Gravity to velocity ---
+                currentVel.x -= currentVel.x * 10.0 * delta;
+                currentVel.z -= currentVel.z * 10.0 * delta;
+                currentVel.y -= gravity * delta;
 
                 // --- Calculate Input Direction Vector ---
                 direction.z = Number(moveForward) - Number(moveBackward);
                 direction.x = Number(moveRight) - Number(moveLeft);
-                direction.normalize(); // Ensure consistent speed diagonally
+                direction.normalize();
 
                 // --- Calculate World-Space Movement Delta based on Input & Camera Direction ---
                 const moveSpeed = playerSpeed * delta;
                 const moveDelta = new THREE.Vector3(); // Displacement for this frame based on input
 
-                // Get the camera's forward direction (ignoring pitch)
-                const forward = new THREE.Vector3();
-                controls.getDirection(forward); // Gets direction vector based on camera orientation
-                forward.y = 0; // Project onto XZ plane
-                forward.normalize();
+                if (direction.lengthSq() > 0.001) { // Only calculate if there's input
+                    const forward = new THREE.Vector3();
+                    controls.getDirection(forward); // Get camera direction
+                    forward.y = 0;
+                    forward.normalize();
 
-                // Calculate the right direction
-                const right = new THREE.Vector3();
-                right.crossVectors(controls.getObject().up, forward).normalize(); // Use control's up vector
+                    const right = new THREE.Vector3();
+                    right.crossVectors(controls.getObject().up, forward).normalize();
 
-                // Apply movement based on input flags
-                if (direction.z !== 0) {
-                    moveDelta.addScaledVector(forward, direction.z * moveSpeed);
+                    if (direction.z !== 0) {
+                        moveDelta.addScaledVector(forward, direction.z * moveSpeed);
+                    }
+                    if (direction.x !== 0) {
+                        moveDelta.addScaledVector(right, direction.x * moveSpeed);
+                    }
                 }
-                if (direction.x !== 0) {
-                    moveDelta.addScaledVector(right, direction.x * moveSpeed);
-                }
 
+                // --- Calculate total potential displacement for this frame ---
+                const totalDelta = new THREE.Vector3();
+                totalDelta.add(moveDelta); // Input movement
+                totalDelta.addScaledVector(currentVel, delta); // Movement from velocity
 
                 // --- Collision Detection & Resolution (Axis-by-Axis AABB) ---
+                // Operate on temporary next position derived from playerState
                 const tempPos = new THREE.Vector3(); // Reusable vector for checks
+                let finalPosition = currentPos.clone(); // Start with current position
 
                 // --- 1. Resolve X-axis Collision ---
-                // Predict position combining existing velocity AND this frame's input movement
-                let nextX = playerPos.x + velocity.x * delta + moveDelta.x;
-                tempPos.set(nextX, playerPos.y, playerPos.z); // Check only X movement
-
-                if (checkCollision(tempPos)) {
-                    velocity.x = 0; // Stop residual X momentum if collision
-                    moveDelta.x = 0; // Cancel input-based X movement for this frame
+                tempPos.set(finalPosition.x + totalDelta.x, finalPosition.y, finalPosition.z);
+                if (!checkCollision(tempPos)) {
+                    finalPosition.x += totalDelta.x; // Apply X movement if no collision
+                } else {
+                    currentVel.x = 0; // Stop X velocity on collision
                 }
-                playerPos.x += velocity.x * delta + moveDelta.x; // Apply final X movement
-
 
                 // --- 2. Resolve Z-axis Collision ---
-                // Predict position combining existing velocity AND this frame's input movement
-                let nextZ = playerPos.z + velocity.z * delta + moveDelta.z;
-                tempPos.set(playerPos.x, playerPos.y, nextZ); // Check only Z movement (using potentially updated X)
-
-                if (checkCollision(tempPos)) {
-                    velocity.z = 0; // Stop residual Z momentum if collision
-                    moveDelta.z = 0; // Cancel input-based Z movement for this frame
+                // IMPORTANT: Check Z using the potentially updated X from previous step is complex here.
+                // Instead, check Z based on the *original* potential X to simplify.
+                // A more advanced solver might iterate, but this is usually sufficient.
+                // Check using the final X position after X-resolution
+                tempPos.set(finalPosition.x, finalPosition.y, finalPosition.z + totalDelta.z);
+                if (!checkCollision(tempPos)) {
+                    finalPosition.z += totalDelta.z; // Apply Z movement if no collision
+                } else {
+                    currentVel.z = 0; // Stop Z velocity on collision
                 }
-                playerPos.z += velocity.z * delta + moveDelta.z; // Apply final Z movement
-
 
                 // --- 3. Resolve Y-axis Collision ---
-                // Y movement is only affected by gravity/jump velocity, not horizontal input
-                let nextY = playerPos.y + velocity.y * delta;
-                tempPos.set(playerPos.x, nextY, playerPos.z); // Check only Y movement (using potentially updated X and Z)
+                 isOnGround = false; // Reset ground status
+                 canJump = false; // Assume cannot jump
 
-                isOnGround = false; // Reset ground status each frame before check
-                canJump = false; // Assume cannot jump unless ground detected
-
-                if (checkCollision(tempPos)) {
-                    if (velocity.y < 0) { // Moving down - hit ground
-                        // Find the exact ground level below the player's intended next foot position
-                        const playerFeetY = nextY - playerHeight;
-                        const checkMinX = Math.floor(playerPos.x - playerHalfWidth);
-                        const checkMaxX = Math.floor(playerPos.x + playerHalfWidth);
-                        const checkMinZ = Math.floor(playerPos.z - playerHalfDepth);
-                        const checkMaxZ = Math.floor(playerPos.z + playerHalfDepth);
-                        const checkYBelow = Math.floor(playerFeetY);
+                tempPos.set(finalPosition.x, finalPosition.y + totalDelta.y, finalPosition.z);
+                if (!checkCollision(tempPos)) {
+                    // No Y collision - apply the calculated vertical movement
+                     finalPosition.y += totalDelta.y;
+                } else {
+                     // Collision on Y axis
+                     if (totalDelta.y < 0) { // Moving down - hit ground
+                        // Snap to ground more accurately
+                        const checkYBelow = Math.floor(tempPos.y - playerHeight); // Check integer coord below potential feet
+                        const checkMinX = Math.floor(finalPosition.x - playerHalfWidth);
+                        const checkMaxX = Math.floor(finalPosition.x + playerHalfWidth);
+                        const checkMinZ = Math.floor(finalPosition.z - playerHalfDepth);
+                        const checkMaxZ = Math.floor(finalPosition.z + playerHalfDepth);
 
                         let highestGroundY = -Infinity;
                         for (let cx = checkMinX; cx <= checkMaxX; cx++) {
@@ -778,23 +783,23 @@
                             }
                         }
 
-                        if (highestGroundY > -Infinity && playerFeetY <= highestGroundY + 0.01) { // Add small tolerance
-                             playerPos.y = highestGroundY + playerHeight;
+                        if (highestGroundY > -Infinity) {
+                             finalPosition.y = highestGroundY + playerHeight; // Snap feet exactly
                              isOnGround = true;
                              canJump = true;
                         } else {
-                             // Collision detected but snapping failed? Don't update Y.
-                             // playerPos.y = playerPos.y; // Effectively does nothing
+                             // Collision detected, but no ground found directly below? Weird state. Keep current Y?
+                             // finalPosition.y = currentPos.y; // Or just don't change Y
                         }
-                        velocity.y = 0; // Stop falling
+                        currentVel.y = 0; // Stop falling velocity
 
-                    } else if (velocity.y > 0) { // Moving up - hit ceiling
-                        const playerHeadY = nextY;
-                        const checkMinX = Math.floor(playerPos.x - playerHalfWidth);
-                        const checkMaxX = Math.floor(playerPos.x + playerHalfWidth);
-                        const checkMinZ = Math.floor(playerPos.z - playerHalfDepth);
-                        const checkMaxZ = Math.floor(playerPos.z + playerHalfDepth);
-                        const checkYAbove = Math.floor(playerHeadY);
+                     } else if (totalDelta.y > 0) { // Moving up - hit ceiling
+                         // Snap to ceiling more accurately
+                        const checkYAbove = Math.floor(tempPos.y); // Check integer coord at potential head level
+                        const checkMinX = Math.floor(finalPosition.x - playerHalfWidth);
+                        const checkMaxX = Math.floor(finalPosition.x + playerHalfWidth);
+                        const checkMinZ = Math.floor(finalPosition.z - playerHalfDepth);
+                        const checkMaxZ = Math.floor(finalPosition.z + playerHalfDepth);
 
                         let lowestCeilingY = Infinity;
                          for (let cx = checkMinX; cx <= checkMaxX; cx++) {
@@ -806,36 +811,43 @@
                              }
                          }
 
-                         if (lowestCeilingY < Infinity && playerHeadY >= lowestCeilingY - 0.01) { // Add small tolerance
-                              playerPos.y = lowestCeilingY - 0.01;
+                         if (lowestCeilingY < Infinity) {
+                              finalPosition.y = lowestCeilingY - 0.01; // Snap head just below
                          } else {
-                             // Collision detected but snapping failed? Don't update Y.
-                             // playerPos.y = playerPos.y;
+                             // Collision detected, but no ceiling found directly above?
+                             // finalPosition.y = currentPos.y; // Or just don't change Y
                          }
-                         velocity.y = 0; // Stop rising
-                    }
-                } else {
-                    // No Y collision - apply the calculated vertical movement
-                    playerPos.y = nextY;
+                         currentVel.y = 0; // Stop rising velocity
+                     }
                 }
 
+
+                // --- Update the actual player state ---
+                playerState.position.copy(finalPosition);
+                // playerState.velocity is already updated
+
                 // --- Prevent falling through the void ---
-                if (playerPos.y < -20) {
+                if (playerState.position.y < -20) {
                     console.log("Fell out of world, resetting position.");
-                    playerPos.set(0, groundHeight + playerHeight + 5, 0);
-                    velocity.set(0,0,0);
+                    playerState.position.set(0, groundHeight + playerHeight + 5, 0);
+                    playerState.velocity.set(0,0,0);
                     canJump = false;
                 }
+
+                // --- CRITICAL STEP: Update Controls/Camera position ---
+                controls.getObject().position.copy(playerState.position);
 
                 // Update the voxel outline
                 updateVoxelOutline();
 
              } else {
-                 velocity.set(0, 0, 0);
+                 // Reset physics velocity if paused
+                 playerState.velocity.set(0, 0, 0);
                  canJump = false;
                  voxelOutlineMesh.visible = false;
              }
 
+            // Render the scene (camera position is updated now)
             renderer.render(scene, camera);
         }
 
