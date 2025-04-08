@@ -688,7 +688,7 @@
             viewYawSpan.textContent = ((yawDeg % 360 + 360) % 360).toFixed(1);
             viewPitchSpan.textContent = pitchDeg.toFixed(1);
             // --- End Info Display Update ---
-
+/*
              if (controls.isLocked) {
                 // Use playerState for physics simulation
                 const currentPos = playerState.position;
@@ -846,7 +846,7 @@
                  canJump = false;
                  voxelOutlineMesh.visible = false;
              }
-
+*/
             // Render the scene (camera position is updated now)
             renderer.render(scene, camera);
         }
