@@ -529,8 +529,7 @@
         }
 
         // --- Toolbar UI Management (Unchanged) ---
-        function updateToolbarSelection() { /* ... */ }
-        function setupToolbar() { /* ... */ }
+        
         function updateToolbarSelection() {
             document.querySelectorAll('#toolbar .tool-button').forEach(btn => btn.classList.remove('selected'));
             const selectedButton = document.getElementById(`tool-${currentTool}`);
@@ -549,7 +548,6 @@
 
 
         // --- Player AABB Helper (Unchanged) ---
-        function getPlayerAABB(position) { /* ... */ }
         function getPlayerAABB(position) {
             return new THREE.Box3(
                 new THREE.Vector3(position.x - playerHalfWidth, position.y - playerHeight, position.z - playerHalfDepth),
@@ -558,7 +556,6 @@
         }
 
         // --- Collision Check Function (CHUNK-AWARE - Unchanged logic) ---
-        function checkCollision(playerPos) { /* ... */ }
         function checkCollision(playerPos) {
             const playerAABB = getPlayerAABB(playerPos);
             const minX = Math.floor(playerAABB.min.x); const maxX = Math.floor(playerAABB.max.x);
