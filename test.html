@@ -724,7 +724,7 @@
                 const forward = new THREE.Vector3(cameraDirection.x, 0, cameraDirection.z).normalize();
                 const right = new THREE.Vector3();
                 // Use camera.up which is typically (0, 1, 0) for world up
-                right.crossVectors(camera.up, forward).normalize(); // Calculate right vector
+                right.crossVectors(forward, camera.up).normalize(); // Calculate right vector
 
                 const currentSpeed = playerSpeed * delta; // Scale speed by frame time
 
