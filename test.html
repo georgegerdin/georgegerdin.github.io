@@ -416,7 +416,7 @@
                     const colors = { grass: '009900', dirt: '8B4513', stone: '808080', wood: 'A0522D', leaves: '228B22', sand: 'F4A460' };
                     button.style.backgroundImage = `url(${placeholderBase}${colors[type] || 'CCCCCC'}?text=${type.substring(0,1).toUpperCase()})`; // Simple fallback
                     // For local files (if they exist in the same folder):
-                    // button.style.backgroundImage = `url(${url})`;
+                    button.style.backgroundImage = `url(${url})`;
                 } else {
                     // Fallback visual cue if URL is missing
                     button.style.backgroundColor = '#ff00ff'; // Bright pink
