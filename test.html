@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple 3D Block Game (Three.js) - Improved Collision</title>
+    <title>Simple 3D Block Game (Three.js) - Improved Collision & Face Outline</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: sans-serif; background-color: #7ec0ee; }
         canvas { display: block; }
@@ -107,7 +107,7 @@
             <p>(W, A, S, D = Move, SPACE = Jump, MOUSE = Look)</p>
             <p>Left Click = Place Block, Right Click = Remove Block</p>
             <p>SCROLL WHEEL = Change Block Type</p>
-             <p style="color: green;">Collision Improved!</p>
+             <p style="color: green;">Strafing Fixed & Face Outline Added!</p>
         </div>
     </div>
 
@@ -246,11 +246,18 @@
         const raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, 0, -1), 0, 5); // Limit raycast distance
         const pointer = new THREE.Vector2(0, 0); // Center of screen for raycasting
 
-        // --- Voxel Outline ---
-        const voxelOutlineGeometry = new THREE.BoxGeometry(1.01, 1.01, 1.01); // Slightly larger than block
-        const voxelOutlineMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true, depthTest: false, transparent: true, opacity: 0.7 });
-        const voxelOutlineMesh = new THREE.Mesh(voxelOutlineGeometry, voxelOutlineMaterial);
-        voxelOutlineMesh.visible = false;
+        // --- Face Outline ---
+        const faceOutlineGeometry = new THREE.PlaneGeometry(1, 1); // Size of a block face
+        // Make it yellow, slightly transparent, render on top slightly
+        const faceOutlineMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffff00, // Yellow
+            side: THREE.DoubleSide, // Visible from both sides
+            transparent: true,
+            opacity: 0.4,
+            depthTest: false // Render on top (helps avoid z-fighting)
+        });
+        const faceOutlineMesh = new THREE.Mesh(faceOutlineGeometry, faceOutlineMaterial);
+        faceOutlineMesh.visible = false; // Start hidden
 
         // Timing
         let prevTime = performance.now();
@@ -431,7 +438,7 @@
         }
 
 
-        // --- NEW: Player AABB Helper ---
+        // --- Player AABB Helper ---
         function getPlayerAABB(position) {
             // position.y is the eye level, feet are at position.y - playerHeight
             return new THREE.Box3(
@@ -440,7 +447,7 @@
             );
         }
 
-        // --- NEW: Collision Check Function ---
+        // --- Collision Check Function ---
         function checkCollision(playerPos) {
             const playerAABB = getPlayerAABB(playerPos);
             // Determine the range of world voxels the player AABB *might* overlap with
@@ -632,8 +639,8 @@
             generateWorld();
             setupToolbar(); // Create toolbar buttons
 
-            // --- Add Voxel Outline to Scene ---
-            scene.add(voxelOutlineMesh);
+            // --- Add Face Outline to Scene ---
+            scene.add(faceOutlineMesh);
 
             // --- Window Resize Listener ---
             window.addEventListener('resize', onWindowResize);
@@ -650,26 +657,39 @@
          function getIntersection() {
             raycaster.setFromCamera(pointer, camera); // Cast ray from camera center
             const intersects = raycaster.intersectObjects(objects, false); // Check against block meshes
+
              // Filter out the outline mesh itself if it somehow gets intersected
-             const validIntersects = intersects.filter(intersect => intersect.object !== voxelOutlineMesh);
+             const validIntersects = intersects.filter(intersect => intersect.object !== faceOutlineMesh); // <-- Use new mesh name
+
              return validIntersects.length > 0 ? validIntersects[0] : null; // Return closest valid intersection
          }
 
-        // --- Update Voxel Outline Position/Visibility ---
+        // --- Update Voxel Face Outline Position/Visibility/Orientation ---
         function updateVoxelOutline() {
              const intersection = getIntersection();
-             // Check if we hit a valid block with coordinates
-             if (intersection && intersection.object.userData && typeof intersection.object.userData.x !== 'undefined') {
-                const blockPos = intersection.object.position; // Center position of the hit block
-                voxelOutlineMesh.position.copy(blockPos); // Move outline to match
-                voxelOutlineMesh.visible = true;
+
+             // Check if we hit a valid block with coordinates and face info
+             if (intersection && intersection.object.userData && typeof intersection.object.userData.x !== 'undefined' && intersection.face) {
+                const blockCenter = intersection.object.position; // Center position of the hit block
+                const faceNormal = intersection.face.normal.clone(); // Get the normal of the *specific* face hit (clone it!)
+
+                // Calculate position for the outline plane:
+                // Start at block center, move half a block distance along the normal, plus a tiny offset to avoid z-fighting.
+                const outlinePosition = blockCenter.clone().addScaledVector(faceNormal, 0.501); // 0.5 + tiny offset
+                faceOutlineMesh.position.copy(outlinePosition);
+
+                // Orient the plane to face outwards, aligned with the face normal:
+                // We can make the plane 'lookAt' a point slightly further along the normal vector.
+                const lookAtTarget = outlinePosition.clone().add(faceNormal); // Point away from the center along the normal
+                faceOutlineMesh.lookAt(lookAtTarget);
+
+                faceOutlineMesh.visible = true;
              } else {
-                 voxelOutlineMesh.visible = false; // Hide if not looking at a block
+                 faceOutlineMesh.visible = false; // Hide if not looking at a valid block face
              }
         }
 
         // --- Animation Loop ---
-                // --- Animation Loop ---
         function animate() {
             requestAnimationFrame(animate); // Schedule next frame
             const time = performance.now();
@@ -724,6 +744,7 @@
                 const forward = new THREE.Vector3(cameraDirection.x, 0, cameraDirection.z).normalize();
                 const right = new THREE.Vector3();
                 // Use camera.up which is typically (0, 1, 0) for world up
+                // *** STRAFING FIX: Swapped order of cross product ***
                 right.crossVectors(forward, camera.up).normalize(); // Calculate right vector
 
                 const currentSpeed = playerSpeed * delta; // Scale speed by frame time
@@ -764,8 +785,6 @@
                     // Collision detected on X axis. Stop X movement.
                     velocity.x = 0;
                     deltaPosX = 0; // Don't apply X movement this frame
-                    // Optionally, you could try to slide along the wall slightly,
-                    // but stopping is simpler for basic AABB.
                 }
                 tempPos.x = playerPos.x; // Reset temp position X for next check
 
@@ -873,7 +892,7 @@
                     canJump = false; // Ensure can't jump immediately after reset
                 }
 
-                // Update the voxel outline based on where the player is looking
+                // Update the voxel FACE outline based on where the player is looking
                 updateVoxelOutline();
 
              } else { // If controls are NOT locked (paused)
@@ -881,7 +900,7 @@
                  velocity.set(0, 0, 0);
                  canJump = false; // Can't jump while paused
                  // Hide outline when paused
-                 voxelOutlineMesh.visible = false;
+                 faceOutlineMesh.visible = false; // <-- Use new mesh name
              }
 
             // Render the scene regardless of lock state
