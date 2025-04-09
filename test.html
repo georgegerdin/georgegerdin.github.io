@@ -216,11 +216,7 @@
                 textures[key].minFilter = THREE.NearestFilter; // Use NearestFilter for min as well
             }
         }
-        // Specific texture overrides if needed (e.g., different top textures)
-        textures.grass_top = textureLoader.load('https://threejsfundamentals.org/threejs/resources/images/minecraft/grass_top.jpg');
-        textures.grass_top.magFilter = THREE.NearestFilter; textures.grass_top.minFilter = THREE.NearestFilter;
-        textures.wood_top = textureLoader.load('https://threejsfundamentals.org/threejs/resources/images/minecraft/oak_log_top.jpg');
-        textures.wood_top.magFilter = THREE.NearestFilter; textures.wood_top.minFilter = THREE.NearestFilter;
+        
         textures.leaves.transparent = true; // Enable transparency for leaves if using alpha
 
 
