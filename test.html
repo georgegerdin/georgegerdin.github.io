@@ -1070,16 +1070,16 @@
                 let velocityChangeZ = 0;
 
                 if (direction.z !== 0) { // Forward/Backward movement
-                    velocityChangeX -= forward.x * direction.z * currentSpeed; // Note: Changed to subtract forward X
-                    velocityChangeZ -= forward.z * direction.z * currentSpeed; // Note: Changed to subtract forward Z
+                    velocityChangeX += forward.x * direction.z * currentSpeed; // Note: Changed to subtract forward X
+                    velocityChangeZ += forward.z * direction.z * currentSpeed; // Note: Changed to subtract forward Z
                 }
                 if (direction.x !== 0) { // Left/Right movement
                     // Using cross product (camera.up, forward) seems inverted? Let's try direct right calc.
                      const rightDirection = new THREE.Vector3();
-                     rightDirection.crossVectors(controls.getObject().up, cameraDirection).normalize(); // Recalc right based on actual up
+                     rightDirection.crossVectors(cameraDirection, controls.getObject().up).normalize(); // Recalc right based on actual up
 
-                     velocityChangeX -= rightDirection.x * direction.x * currentSpeed; // Apply right movement
-                     velocityChangeZ -= rightDirection.z * direction.x * currentSpeed;
+                     velocityChangeX += rightDirection.x * direction.x * currentSpeed; // Apply right movement
+                     velocityChangeZ += rightDirection.z * direction.x * currentSpeed;
                  }
 
 
