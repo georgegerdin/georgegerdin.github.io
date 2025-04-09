@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Changed Title -->
-    <title>Simple 3D Block Game (Three.js) - Chunks!</title>
+    <title>Simple 3D Block Game (Three.js) - 16x16x16 Chunks & Outlines</title>
     <style>
+        /* --- Styles remain the same as before --- */
         body { margin: 0; overflow: hidden; font-family: sans-serif; background-color: #7ec0ee; }
         canvas { display: block; }
         #blocker {
@@ -103,12 +104,12 @@
 <body>
     <div id="blocker">
         <div id="instructions">
-            <h1>Simple 3D Blocks - Chunks!</h1> <!-- Updated Title -->
+            <h1>Simple 3D Blocks - 16x16x16 Chunks!</h1> <!-- Updated Title -->
             <p>Click to Play</p>
             <p>(W, A, S, D = Move, SPACE = Jump, MOUSE = Look)</p>
             <p>Left Click = Place Block, Right Click = Remove Block</p>
             <p>SCROLL WHEEL = Change Block Type</p>
-             <p style="color: darkblue;">World now uses 4x4x4 Chunks!</p>
+             <p style="color: purple;">Chunks are now 16x16x16! Chunk outlines visible (red).</p> <!-- Updated Desc -->
         </div>
     </div>
 
@@ -130,7 +131,7 @@
             Yaw:<span id="viewYaw">--.--</span>°|
             Pitch:<span id="viewPitch">--.--</span>°
         </div>
-        <div>Chunk: <span id="chunkCoords">--,--,--</span></div> <!-- Added Chunk Coords -->
+        <div>Chunk: <span id="chunkCoords">--,--,--</span></div>
     </div>
 
     <!-- Import three.js -->
@@ -152,13 +153,13 @@
         const objects = []; // Holds meshes for raycasting (all blocks)
 
         // --- Chunk Configuration ---
-        const chunkSize = 4; // Size of chunks (4x4x4)
+        const chunkSize = 16; // <<< CHANGED chunk size
 
         // --- World Dimensions (in blocks, used for generation bounds) ---
-        const worldWidth = 20;
+        const worldWidth = 20; // Note: Initial generation might only fill parts of chunks
         const worldDepth = 20;
-        const worldHeight = 10; // Max build height
-        const groundHeight = 5; // Initial ground level
+        const worldHeight = 10; // Max build height (relative to y=0)
+        const groundHeight = 5; // Initial ground level (y-coordinate)
 
         // Movement states
         let moveForward = false;
@@ -183,10 +184,10 @@
         const blocker = document.getElementById('blocker');
         const instructions = document.getElementById('instructions');
         const toolbar = document.getElementById('toolbar');
-        let fpsValueSpan, posXSpan, posYSpan, posZSpan, viewYawSpan, viewPitchSpan, chunkCoordsSpan; // For info display
+        let fpsValueSpan, posXSpan, posYSpan, posZSpan, viewYawSpan, viewPitchSpan, chunkCoordsSpan;
 
-        // --- Tool Management ---
-        const textureUrls = {
+        // --- Tool Management (Unchanged) ---
+        const textureUrls = { /* ... */
             grass: 'grass.jpg', dirt: 'dirt.jpg', stone: 'cobble.jpg',
             wood: 'wood.jpg', leaves: 'leaves.webp', sand: 'sand.png',
         };
@@ -194,9 +195,9 @@
         let currentToolIndex = 0;
         let currentTool = toolTypes[currentToolIndex];
 
-        // --- Texture Loading ---
+        // --- Texture Loading (Unchanged) ---
         const textureLoader = new THREE.TextureLoader();
-        const textures = {
+        const textures = { /* ... */
             dirt: textureLoader.load(textureUrls.dirt),
             grass: textureLoader.load('grass.jpg'),
             grass_top: textureLoader.load(textureUrls.grass),
@@ -213,8 +214,8 @@
             }
         }
 
-        // --- Material Definitions ---
-         const materials = {
+        // --- Material Definitions (Unchanged) ---
+         const materials = { /* ... */
             grass: [
                 new THREE.MeshLambertMaterial({ map: textures.grass }), new THREE.MeshLambertMaterial({ map: textures.grass }),
                 new THREE.MeshLambertMaterial({ map: textures.grass_top }), new THREE.MeshLambertMaterial({ map: textures.dirt }),
@@ -231,15 +232,21 @@
             sand: new THREE.MeshLambertMaterial({ map: textures.sand }),
         };
 
-        // --- Raycasting ---
+        // --- Raycasting (Unchanged) ---
         const raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, 0, -1), 0, 5);
         const pointer = new THREE.Vector2(0, 0);
 
-        // --- Face Outline ---
+        // --- Face Outline (Unchanged) ---
         const faceOutlineGeometry = new THREE.PlaneGeometry(1, 1);
         const faceOutlineMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00, side: THREE.DoubleSide, transparent: true, opacity: 0.4, depthTest: false });
         const faceOutlineMesh = new THREE.Mesh(faceOutlineGeometry, faceOutlineMaterial);
         faceOutlineMesh.visible = false;
+
+        // --- Chunk Outline Material (NEW) ---
+        const chunkOutlineMaterial = new THREE.LineBasicMaterial({
+            color: 0xff0000, // Red color for outlines
+            depthTest: false // Draw outlines on top of everything
+        });
 
         // Timing
         let prevTime = performance.now();
@@ -247,24 +254,28 @@
 
 
         // ===============================================================
-        // ===== CHUNK CLASS DEFINITION ==================================
+        // ===== CHUNK CLASS DEFINITION (Outline added) ==================
         // ===============================================================
         class Chunk {
             constructor(chunkX, chunkY, chunkZ) {
                 this.chunkX = chunkX;
                 this.chunkY = chunkY;
                 this.chunkZ = chunkZ;
-                this.worldOrigin = new THREE.Vector3( // Calculate world position of chunk corner (0,0,0)
+                this.worldOrigin = new THREE.Vector3( // World position of chunk corner (min x,y,z)
                     chunkX * chunkSize,
                     chunkY * chunkSize,
                     chunkZ * chunkSize
                 );
                 // 3D array to store voxel data { type: string, mesh: THREE.Mesh }
                 this.voxels = this.initVoxels();
+
+                // --- Create and add chunk outline ---
+                this.outlineMesh = this.createOutlineMesh();
+                scene.add(this.outlineMesh); // Add outline to the scene immediately
             }
 
             // Initialize the 3D array with null values
-            initVoxels() {
+            initVoxels() { /* ... no changes ... */
                 const arr = new Array(chunkSize);
                 for (let x = 0; x < chunkSize; x++) {
                     arr[x] = new Array(chunkSize);
@@ -275,34 +286,50 @@
                 return arr;
             }
 
+             // --- NEW: Create the visual outline for the chunk ---
+             createOutlineMesh() {
+                const geometry = new THREE.BoxGeometry(chunkSize, chunkSize, chunkSize);
+                const edges = new THREE.EdgesGeometry(geometry);
+                const line = new THREE.LineSegments(edges, chunkOutlineMaterial); // Use shared material
+
+                // Position the outline centered within the chunk's world space
+                line.position.set(
+                    this.worldOrigin.x + chunkSize / 2,
+                    this.worldOrigin.y + chunkSize / 2,
+                    this.worldOrigin.z + chunkSize / 2
+                );
+                // Make sure it's not accidentally raycasted
+                line.userData.isChunkOutline = true; // Custom flag
+
+                return line;
+            }
+
             // Get voxel data at LOCAL coordinates (0 to chunkSize-1)
-            getVoxel(localX, localY, localZ) {
+            getVoxel(localX, localY, localZ) { /* ... no changes ... */
                  if (this.isValidLocalCoord(localX, localY, localZ)) {
                      return this.voxels[localX][localY][localZ];
                  }
-                 return null; // Out of bounds
+                 return null;
             }
 
             // Set voxel data at LOCAL coordinates
-            // Voxel data should be an object like { type: 'grass', mesh: THREE.Mesh } or null
-            setVoxel(localX, localY, localZ, voxelData) {
+            setVoxel(localX, localY, localZ, voxelData) { /* ... no changes ... */
                  if (this.isValidLocalCoord(localX, localY, localZ)) {
                     this.voxels[localX][localY][localZ] = voxelData;
                     return true;
                  }
-                 return false; // Out of bounds
+                 return false;
             }
 
              // Check if local coordinates are within the chunk bounds
-            isValidLocalCoord(lx, ly, lz) {
+            isValidLocalCoord(lx, ly, lz) { /* ... no changes ... */
                 return lx >= 0 && lx < chunkSize &&
                        ly >= 0 && ly < chunkSize &&
                        lz >= 0 && lz < chunkSize;
             }
 
             // Convert WORLD coordinates to LOCAL chunk coordinates
-            worldToLocal(worldX, worldY, worldZ) {
-                // Use modulo and floor to handle negative coords correctly
+            worldToLocal(worldX, worldY, worldZ) { /* ... no changes ... */
                 const localX = THREE.MathUtils.euclideanModulo(Math.floor(worldX), chunkSize);
                 const localY = THREE.MathUtils.euclideanModulo(Math.floor(worldY), chunkSize);
                 const localZ = THREE.MathUtils.euclideanModulo(Math.floor(worldZ), chunkSize);
@@ -310,12 +337,36 @@
             }
 
             // Convert LOCAL chunk coordinates to WORLD coordinates
-            localToWorld(localX, localY, localZ) {
+            localToWorld(localX, localY, localZ) { /* ... no changes ... */
                 return {
                     x: this.worldOrigin.x + localX,
                     y: this.worldOrigin.y + localY,
                     z: this.worldOrigin.z + localZ
                 };
+            }
+
+            // --- NEW: Method to dispose of chunk resources (useful if unloading) ---
+            dispose() {
+                if (this.outlineMesh) {
+                    scene.remove(this.outlineMesh);
+                    this.outlineMesh.geometry.dispose();
+                    // Material is shared, don't dispose here unless it's the last chunk
+                }
+                // Also iterate through this.voxels and dispose individual block meshes
+                // (more relevant when chunk meshing is not used)
+                for (let x = 0; x < chunkSize; x++) {
+                    for (let y = 0; y < chunkSize; y++) {
+                        for (let z = 0; z < chunkSize; z++) {
+                            const voxelData = this.voxels[x][y][z];
+                            if (voxelData && voxelData.mesh) {
+                                // Scene removal/object list removal happens in removeVoxel
+                                voxelData.mesh.geometry.dispose();
+                                // Material disposal skipped (shared/array)
+                            }
+                        }
+                    }
+                }
+                 console.log(`Disposed chunk ${this.chunkX},${this.chunkY},${this.chunkZ}`);
             }
         }
         // ===============================================================
@@ -323,216 +374,174 @@
         // ===============================================================
 
 
-        // --- Chunk Utility Functions ---
+        // --- Chunk Utility Functions (Unchanged logic, uses new chunkSize) ---
 
-        // Calculate chunk coordinates from world coordinates
-        function getChunkCoords(worldX, worldY, worldZ) {
+        function getChunkCoords(worldX, worldY, worldZ) { /* ... no changes ... */
             const cx = Math.floor(worldX / chunkSize);
             const cy = Math.floor(worldY / chunkSize);
             const cz = Math.floor(worldZ / chunkSize);
             return { x: cx, y: cy, z: cz };
         }
 
-        // Generate a unique key string for chunk coordinates
-        function getChunkKey(chunkX, chunkY, chunkZ) {
+        function getChunkKey(chunkX, chunkY, chunkZ) { /* ... no changes ... */
             return `${chunkX},${chunkY},${chunkZ}`;
         }
 
-        // Get the Chunk object for given world coordinates. Creates chunk if it doesn't exist.
-        function getChunk(worldX, worldY, worldZ) {
+        // Get the Chunk object. Creates chunk (and its outline) if it doesn't exist.
+        function getChunk(worldX, worldY, worldZ) { /* ... no changes ... */
             const { x: cx, y: cy, z: cz } = getChunkCoords(worldX, worldY, worldZ);
             const key = getChunkKey(cx, cy, cz);
             if (!world[key]) {
-                // console.log(`Creating chunk at ${key}`); // Debug: Log chunk creation
+                 // console.log(`Creating chunk at ${key}`); // Constructor now handles outline creation/addition
                 world[key] = new Chunk(cx, cy, cz);
             }
             return world[key];
         }
 
-        // Get voxel data (type and mesh) from world coordinates
-        function getVoxelDataFromWorld(worldX, worldY, worldZ) {
-            const chunk = getChunk(worldX, worldY, worldZ); // Gets or creates chunk
-            // Chunk might be newly created and empty, so check if it exists first (getChunk ensures this)
+        function getVoxelDataFromWorld(worldX, worldY, worldZ) { /* ... no changes ... */
+             // Need to handle cases where the coords fall into a chunk that *should* exist
+             // but hasn't been explicitly created yet (e.g. checking empty space).
+             // getChunk ensures the chunk exists before we try accessing it.
+             const chunk = getChunk(worldX, worldY, worldZ); // Ensures chunk exists
              if (chunk) {
                  const localCoords = chunk.worldToLocal(worldX, worldY, worldZ);
-                 return chunk.getVoxel(localCoords.x, localCoords.y, localCoords.z);
+                 // Check bounds again just in case, though worldToLocal should handle it
+                 if (chunk.isValidLocalCoord(localCoords.x, localCoords.y, localCoords.z)) {
+                    return chunk.getVoxel(localCoords.x, localCoords.y, localCoords.z);
+                 }
              }
-            return null; // No chunk found (shouldn't happen with getChunk)
+            return null; // Voxel doesn't exist or coords invalid
         }
 
 
-        // --- Utility Functions ---
-        // (getVoxelKey removed)
-
-        // Gets the correct material (single or array) for a block type
-        function getMaterial(type) {
+        // --- Utility Functions (Unchanged) ---
+        function getMaterial(type) { /* ... no changes ... */
              if (type === 'grass') return materials.grass;
              if (type === 'wood') return materials.wood;
-             return materials[type] || materials.stone; // Default to stone
+             return materials[type] || materials.stone;
         }
 
 
-        // --- Voxel Management (CHUNK-AWARE) ---
-        function addVoxel(worldX, worldY, worldZ, type) {
-            worldX = Math.floor(worldX); // Ensure integer world coordinates
+        // --- Voxel Management (CHUNK-AWARE - Unchanged logic) ---
+        function addVoxel(worldX, worldY, worldZ, type) { /* ... no changes ... */
+            worldX = Math.floor(worldX);
             worldY = Math.floor(worldY);
             worldZ = Math.floor(worldZ);
 
-            // Prevent building outside defined height limits or replacing existing
             const existingVoxel = getVoxelDataFromWorld(worldX, worldY, worldZ);
-            if (existingVoxel || worldY < 0 || worldY >= worldHeight) {
-                 // console.log(`Cannot add voxel at ${worldX},${worldY},${worldZ}. Existing: ${!!existingVoxel}, Height: ${worldY}`);
+            if (existingVoxel || worldY < 0 || worldY >= worldHeight * chunkSize ) { // Check against practical world height limit
                 return;
             }
 
-            const chunk = getChunk(worldX, worldY, worldZ); // Get or create the chunk
+            const chunk = getChunk(worldX, worldY, worldZ); // Gets or creates chunk + outline
             const localCoords = chunk.worldToLocal(worldX, worldY, worldZ);
 
-             // Ensure material exists
              let material = getMaterial(type);
              if (!material) {
-                 console.warn(`No material found for type: ${type}. Using stone.`);
+                 console.warn(`No material for type: ${type}. Using stone.`);
                  type = 'stone';
                  material = materials.stone;
              }
 
             const geometry = new THREE.BoxGeometry(1, 1, 1);
             const mesh = new THREE.Mesh(geometry, material);
-
-            // Position mesh at the center of the WORLD voxel space
             mesh.position.set(worldX + 0.5, worldY + 0.5, worldZ + 0.5);
-            // Store WORLD voxel coordinates and type in userData for raycasting/interaction
             mesh.userData = { x: worldX, y: worldY, z: worldZ, type: type };
 
-            // Add mesh to the scene and raycasting list
             scene.add(mesh);
             objects.push(mesh);
 
-            // Store voxel data (type and mesh reference) in the chunk
             chunk.setVoxel(localCoords.x, localCoords.y, localCoords.z, {
                 type: type,
                 mesh: mesh
             });
-            // console.log(`Added ${type} at ${worldX},${worldY},${worldZ} (Chunk ${chunk.chunkX},${chunk.chunkY},${chunk.chunkZ}, Local ${localCoords.x},${localCoords.y},${localCoords.z})`);
         }
 
-         function removeVoxel(worldX, worldY, worldZ) {
+         function removeVoxel(worldX, worldY, worldZ) { /* ... no changes ... */
             worldX = Math.floor(worldX);
             worldY = Math.floor(worldY);
             worldZ = Math.floor(worldZ);
 
-            const chunk = getChunk(worldX, worldY, worldZ); // Get chunk (might be empty)
+            // IMPORTANT: Use getChunkCoords and check if chunk *actually exists* in world map
+            // before trying to remove from it. Don't implicitly create a chunk just to remove nothing.
+            const { x: cx, y: cy, z: cz } = getChunkCoords(worldX, worldY, worldZ);
+            const key = getChunkKey(cx, cy, cz);
+            const chunk = world[key]; // Get existing chunk, or undefined if it doesn't exist
+
+            if (!chunk) {
+                // console.log(`Attempted to remove voxel from non-existent chunk at ${key}`);
+                return false; // Chunk doesn't exist, nothing to remove
+            }
+
+            // Chunk exists, proceed with removal logic
             const localCoords = chunk.worldToLocal(worldX, worldY, worldZ);
             const voxelData = chunk.getVoxel(localCoords.x, localCoords.y, localCoords.z);
 
             if (voxelData && voxelData.mesh) {
-                // Remove from scene
                 scene.remove(voxelData.mesh);
-
-                // Remove from raycasting list
                 const index = objects.indexOf(voxelData.mesh);
                 if (index > -1) {
                     objects.splice(index, 1);
                 }
-
-                 // Dispose geometry/material (optional but good practice)
                  voxelData.mesh.geometry.dispose();
-                 // Material disposal is trickier with shared/array materials - skip for now
-
-                // Remove voxel data from the chunk
+                 // Material disposal skipped
                 chunk.setVoxel(localCoords.x, localCoords.y, localCoords.z, null);
-                // console.log(`Removed voxel at ${worldX},${worldY},${worldZ}`);
-                return true; // Indicate success
+                return true;
             }
-            // console.log(`No voxel found to remove at ${worldX},${worldY},${worldZ}`);
-            return false; // Indicate nothing was removed
+            return false;
         }
 
-        // --- World Generation (uses new addVoxel) ---
-        function generateWorld() {
+        // --- World Generation (Unchanged logic, populates larger chunks) ---
+        function generateWorld() { /* ... no changes ... */
             console.log("Generating world...")
-            // Simple flat world base
             for (let x = -worldWidth / 2; x < worldWidth / 2; x++) {
                 for (let z = -worldDepth / 2; z < worldDepth / 2; z++) {
                     for (let y = 0; y < groundHeight; y++) {
                         let type = 'stone';
                          if (y === groundHeight - 1) type = 'grass';
                          else if (y >= groundHeight - 3) type = 'dirt';
-                         addVoxel(x, y, z, type); // addVoxel handles chunk creation now
+                         addVoxel(x, y, z, type); // Will create chunks as needed
                     }
                 }
             }
-             // Add simple "trees"
             for (let i = 0; i < 5; i++) {
                 const treeX = Math.floor(Math.random() * worldWidth - worldWidth / 2);
                 const treeZ = Math.floor(Math.random() * worldDepth - worldDepth / 2);
                 const treeHeight = 4 + Math.floor(Math.random() * 3);
-
-                 // Check if the base block is suitable (use getVoxelDataFromWorld)
                  const baseVoxelData = getVoxelDataFromWorld(treeX, groundHeight - 1, treeZ);
                  if (baseVoxelData && baseVoxelData.type === 'grass') {
-                     // Trunk
                      for(let y = groundHeight; y < groundHeight + treeHeight; y++) {
                          addVoxel(treeX, y, treeZ, 'wood');
                      }
-                     // Leaves
                     const leavesY = groundHeight + treeHeight;
-                    for(let lx = -2; lx <= 2; lx++) {
-                        for(let lz = -2; lz <= 2; lz++) {
-                            for(let ly = 0; ly <= 2; ly++) {
-                                if (Math.abs(lx) === 2 && Math.abs(lz) === 2) continue;
-                                if (ly === 2 && (Math.abs(lx) > 1 || Math.abs(lz) > 1)) continue;
-                                const currentY = leavesY + ly;
-                                const currentX = treeX + lx;
-                                const currentZ = treeZ + lz;
-                                if (lx === 0 && lz === 0 && ly < 1) continue;
-
-                                // Check if space is empty before adding leaves
-                                if (!getVoxelDataFromWorld(currentX, currentY, currentZ)) {
-                                     addVoxel(currentX, currentY, currentZ, 'leaves');
-                                }
-                            }
+                    for(let lx = -2; lx <= 2; lx++) { for(let lz = -2; lz <= 2; lz++) { for(let ly = 0; ly <= 2; ly++) {
+                        if (Math.abs(lx) === 2 && Math.abs(lz) === 2) continue;
+                        if (ly === 2 && (Math.abs(lx) > 1 || Math.abs(lz) > 1)) continue;
+                        const currentY = leavesY + ly; const currentX = treeX + lx; const currentZ = treeZ + lz;
+                        if (lx === 0 && lz === 0 && ly < 1) continue;
+                        if (!getVoxelDataFromWorld(currentX, currentY, currentZ)) {
+                             addVoxel(currentX, currentY, currentZ, 'leaves');
                         }
-                    }
+                    }}}
                  }
             }
             console.log("World generation complete.");
         }
 
         // --- Toolbar UI Management (Unchanged) ---
-        function updateToolbarSelection() { /* ... no changes ... */
-            document.querySelectorAll('#toolbar .tool-button').forEach(btn => {
-                btn.classList.remove('selected');
-            });
+        function updateToolbarSelection() { /* ... */ }
+        function setupToolbar() { /* ... */ }
+        function updateToolbarSelection() {
+            document.querySelectorAll('#toolbar .tool-button').forEach(btn => btn.classList.remove('selected'));
             const selectedButton = document.getElementById(`tool-${currentTool}`);
-            if (selectedButton) {
-                selectedButton.classList.add('selected');
-            } else {
-                 console.error(`Toolbar button not found for type: ${currentTool}`);
-            }
+            if (selectedButton) selectedButton.classList.add('selected');
         }
-        function setupToolbar() { /* ... no changes ... */
+        function setupToolbar() {
              toolTypes.forEach(type => {
-                const url = textureUrls[type];
-                const button = document.createElement('div');
-                button.id = `tool-${type}`;
-                button.classList.add('tool-button');
-                button.dataset.type = type;
-
-                if (url) {
-                     // For local files:
-                    button.style.backgroundImage = `url(${url})`;
-                 } else {
-                    button.style.backgroundColor = '#ff00ff';
-                    console.warn(`Missing texture URL for toolbar type: ${type}`);
-                }
-
-                button.addEventListener('click', () => {
-                    currentTool = type;
-                    currentToolIndex = toolTypes.indexOf(type);
-                    updateToolbarSelection();
-                });
-
+                const url = textureUrls[type]; const button = document.createElement('div');
+                button.id = `tool-${type}`; button.classList.add('tool-button'); button.dataset.type = type;
+                if (url) { button.style.backgroundImage = `url(${url})`; } else { button.style.backgroundColor = '#ff00ff'; console.warn(`Missing texture URL for toolbar type: ${type}`); }
+                button.addEventListener('click', () => { currentTool = type; currentToolIndex = toolTypes.indexOf(type); updateToolbarSelection(); });
                 toolbar.appendChild(button);
             });
             updateToolbarSelection();
@@ -540,376 +549,234 @@
 
 
         // --- Player AABB Helper (Unchanged) ---
-        function getPlayerAABB(position) { /* ... no changes ... */
+        function getPlayerAABB(position) { /* ... */ }
+        function getPlayerAABB(position) {
             return new THREE.Box3(
                 new THREE.Vector3(position.x - playerHalfWidth, position.y - playerHeight, position.z - playerHalfDepth),
                 new THREE.Vector3(position.x + playerHalfWidth, position.y,                position.z + playerHalfDepth)
             );
         }
 
-        // --- Collision Check Function (CHUNK-AWARE) ---
+        // --- Collision Check Function (CHUNK-AWARE - Unchanged logic) ---
+        function checkCollision(playerPos) { /* ... */ }
         function checkCollision(playerPos) {
             const playerAABB = getPlayerAABB(playerPos);
-            // Determine the range of world voxels the player AABB *might* overlap with
-            const minX = Math.floor(playerAABB.min.x);
-            const maxX = Math.floor(playerAABB.max.x);
-            const minY = Math.floor(playerAABB.min.y);
-            const maxY = Math.floor(playerAABB.max.y);
-            const minZ = Math.floor(playerAABB.min.z);
-            const maxZ = Math.floor(playerAABB.max.z);
+            const minX = Math.floor(playerAABB.min.x); const maxX = Math.floor(playerAABB.max.x);
+            const minY = Math.floor(playerAABB.min.y); const maxY = Math.floor(playerAABB.max.y);
+            const minZ = Math.floor(playerAABB.min.z); const maxZ = Math.floor(playerAABB.max.z);
 
-            // Iterate through the potentially overlapping WORLD voxels
-            for (let x = minX; x <= maxX; x++) {
-                for (let y = minY; y <= maxY; y++) {
-                    for (let z = minZ; z <= maxZ; z++) {
-                        // Use the new function to check for voxel existence via chunks
-                        const voxelData = getVoxelDataFromWorld(x, y, z);
-                        if (voxelData) { // If voxelData exists (meaning block is present)
-                            // Create a bounding box for the world block
-                            const blockAABB = new THREE.Box3(
-                                new THREE.Vector3(x, y, z),
-                                new THREE.Vector3(x + 1, y + 1, z + 1)
-                            );
-                            // Check if the player's AABB intersects this block's AABB
-                            if (playerAABB.intersectsBox(blockAABB)) {
-                                return true; // Collision detected
-                            }
-                        }
+            for (let x = minX; x <= maxX; x++) { for (let y = minY; y <= maxY; y++) { for (let z = minZ; z <= maxZ; z++) {
+                const voxelData = getVoxelDataFromWorld(x, y, z); // Uses chunk system
+                if (voxelData) {
+                    const blockAABB = new THREE.Box3( new THREE.Vector3(x, y, z), new THREE.Vector3(x + 1, y + 1, z + 1) );
+                    if (playerAABB.intersectsBox(blockAABB)) {
+                        return true;
                     }
                 }
-            }
-            return false; // No collision found
+            }}}
+            return false;
         }
 
 
-        // --- Initialization Function ---
+        // --- Initialization Function (Mostly Unchanged) ---
         function init() {
-            // --- Scene ---
+            // Scene, Camera, Renderer, Lighting, Controls setup... (Unchanged)
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x87ceeb);
             scene.fog = new THREE.Fog(0x87ceeb, 10, 90);
-
-            // --- Camera ---
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
             camera.position.set(0, groundHeight + playerHeight + 0.5, 5);
-
-            // --- Renderer ---
             renderer = new THREE.WebGLRenderer({ antialias: false });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
             document.body.appendChild(renderer.domElement);
-
-            // --- Lighting ---
-            const ambientLight = new THREE.AmbientLight(0xcccccc, 0.9);
-            scene.add(ambientLight);
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
-            directionalLight.position.set(50, 80, 40);
-            scene.add(directionalLight);
-
-             // --- Controls (Pointer Lock) ---
-            controls = new PointerLockControls(camera, document.body);
-            scene.add(controls.getObject());
+            const ambientLight = new THREE.AmbientLight(0xcccccc, 0.9); scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0); directionalLight.position.set(50, 80, 40); scene.add(directionalLight);
+            controls = new PointerLockControls(camera, document.body); scene.add(controls.getObject());
             instructions.addEventListener('click', () => controls.lock());
-            controls.addEventListener('lock', () => {
-                instructions.style.display = 'none';
-                blocker.style.display = 'none';
-            });
-            controls.addEventListener('unlock', () => {
-                blocker.style.display = 'flex';
-                instructions.style.display = '';
-            });
+            controls.addEventListener('lock', () => { instructions.style.display = 'none'; blocker.style.display = 'none'; });
+            controls.addEventListener('unlock', () => { blocker.style.display = 'flex'; instructions.style.display = ''; });
 
-             // --- Keyboard Input (Unchanged) ---
-            const onKeyDown = (event) => { /* ... no changes ... */
+             // Keyboard Input (Unchanged) ...
+             const onKeyDown = (event) => {
                  if (event.repeat) return;
                 switch (event.code) {
-                    case 'ArrowUp': case 'KeyW': moveForward = true; break;
-                    case 'ArrowLeft': case 'KeyA': moveLeft = true; break;
-                    case 'ArrowDown': case 'KeyS': moveBackward = true; break;
-                    case 'ArrowRight': case 'KeyD': moveRight = true; break;
+                    case 'ArrowUp': case 'KeyW': moveForward = true; break; case 'ArrowLeft': case 'KeyA': moveLeft = true; break;
+                    case 'ArrowDown': case 'KeyS': moveBackward = true; break; case 'ArrowRight': case 'KeyD': moveRight = true; break;
                     case 'Space': if (canJump) { velocity.y = jumpVelocity; canJump = false; } break;
                 }
             };
-             const onKeyUp = (event) => { /* ... no changes ... */
+             const onKeyUp = (event) => {
                 switch (event.code) {
-                    case 'ArrowUp': case 'KeyW': moveForward = false; break;
-                    case 'ArrowLeft': case 'KeyA': moveLeft = false; break;
-                    case 'ArrowDown': case 'KeyS': moveBackward = false; break;
-                    case 'ArrowRight': case 'KeyD': moveRight = false; break;
+                    case 'ArrowUp': case 'KeyW': moveForward = false; break; case 'ArrowLeft': case 'KeyA': moveLeft = false; break;
+                    case 'ArrowDown': case 'KeyS': moveBackward = false; break; case 'ArrowRight': case 'KeyD': moveRight = false; break;
                 }
             };
-            document.addEventListener('keydown', onKeyDown);
-            document.addEventListener('keyup', onKeyUp);
+            document.addEventListener('keydown', onKeyDown); document.addEventListener('keyup', onKeyUp);
 
-
-            // --- Mouse Input (Block Placement/Removal - Uses new add/remove) ---
+            // Mouse Input (Block Placement/Removal - Unchanged logic) ...
              window.addEventListener('mousedown', (event) => {
                  if (!controls.isLocked) return;
-                 const intersection = getIntersection(); // Raycasting remains the same
+                 const intersection = getIntersection();
                  if (!intersection) return;
-
-                 const obj = intersection.object;
-                 const hitCoords = obj.userData; // Still uses WORLD coords stored in mesh
-
-                 if (!hitCoords || typeof hitCoords.x === 'undefined') {
-                     console.log("Clicked on non-world object or object missing coords.");
-                     return;
-                 }
-
+                 const obj = intersection.object; const hitCoords = obj.userData;
+                 if (!hitCoords || typeof hitCoords.x === 'undefined') { console.log("Clicked non-world object."); return; }
                  const normal = intersection.face.normal.clone();
-
-                 if (event.button === 0) { // Left click - Place block
-                     const placeCoords = {
-                         x: hitCoords.x + normal.x,
-                         y: hitCoords.y + normal.y,
-                         z: hitCoords.z + normal.z
-                     };
-
-                     // Player collision check for placement (Unchanged logic, uses world coords)
-                     const blockAABB = new THREE.Box3(
-                         new THREE.Vector3(placeCoords.x, placeCoords.y, placeCoords.z),
-                         new THREE.Vector3(placeCoords.x + 1, placeCoords.y + 1, placeCoords.z + 1)
-                     );
+                 if (event.button === 0) { // Place
+                     const placeCoords = { x: hitCoords.x + normal.x, y: hitCoords.y + normal.y, z: hitCoords.z + normal.z };
+                     const blockAABB = new THREE.Box3( new THREE.Vector3(placeCoords.x, placeCoords.y, placeCoords.z), new THREE.Vector3(placeCoords.x + 1, placeCoords.y + 1, placeCoords.z + 1) );
                      const playerAABB = getPlayerAABB(controls.getObject().position);
-
                      if (!playerAABB.intersectsBox(blockAABB)) {
-                         // Use the new chunk-aware addVoxel
-                         addVoxel(placeCoords.x, placeCoords.y, placeCoords.z, currentTool);
-                     } else {
-                         console.log("Cannot place block inside player");
-                     }
-
-                 } else if (event.button === 2) { // Right click - Remove block
-                    // Use the new chunk-aware removeVoxel, using the WORLD coordinates from the hit mesh
-                    removeVoxel(hitCoords.x, hitCoords.y, hitCoords.z);
+                         addVoxel(placeCoords.x, placeCoords.y, placeCoords.z, currentTool); // Uses chunk-aware add
+                     } else { console.log("Cannot place block inside player"); }
+                 } else if (event.button === 2) { // Remove
+                    removeVoxel(hitCoords.x, hitCoords.y, hitCoords.z); // Uses chunk-aware remove
                  }
              });
 
-            // --- Scroll Wheel Input (Tool Switching - Unchanged) ---
-            window.addEventListener('wheel', (event) => { /* ... no changes ... */
-                if (!controls.isLocked) return;
-                event.preventDefault();
+            // Scroll Wheel Input (Tool Switching - Unchanged) ...
+            window.addEventListener('wheel', (event) => {
+                if (!controls.isLocked) return; event.preventDefault();
                 const scrollDirection = Math.sign(event.deltaY);
-                if (scrollDirection > 0) {
-                    currentToolIndex = (currentToolIndex + 1) % toolTypes.length;
-                } else if (scrollDirection < 0) {
-                    currentToolIndex = (currentToolIndex - 1 + toolTypes.length) % toolTypes.length;
-                }
-                currentTool = toolTypes[currentToolIndex];
-                updateToolbarSelection();
+                if (scrollDirection > 0) { currentToolIndex = (currentToolIndex + 1) % toolTypes.length; }
+                else if (scrollDirection < 0) { currentToolIndex = (currentToolIndex - 1 + toolTypes.length) % toolTypes.length; }
+                currentTool = toolTypes[currentToolIndex]; updateToolbarSelection();
             }, { passive: false });
 
-
-            // --- Get References to Info Display Elements ---
-            fpsValueSpan = document.getElementById('fpsValue');
-            posXSpan = document.getElementById('posX');
-            posYSpan = document.getElementById('posY');
-            posZSpan = document.getElementById('posZ');
-            viewYawSpan = document.getElementById('viewYaw');
-            viewPitchSpan = document.getElementById('viewPitch');
-            chunkCoordsSpan = document.getElementById('chunkCoords'); // Get chunk span
+            // Get References to Info Display Elements (Unchanged) ...
+            fpsValueSpan = document.getElementById('fpsValue'); posXSpan = document.getElementById('posX');
+            posYSpan = document.getElementById('posY'); posZSpan = document.getElementById('posZ');
+            viewYawSpan = document.getElementById('viewYaw'); viewPitchSpan = document.getElementById('viewPitch');
+            chunkCoordsSpan = document.getElementById('chunkCoords');
 
             // --- World Generation & UI Setup ---
-            generateWorld(); // Calls the new generation function
-            setupToolbar();
+            generateWorld(); // Calls the world generation function
+            setupToolbar(); // Creates toolbar buttons
 
             // --- Add Face Outline to Scene ---
-            scene.add(faceOutlineMesh);
+            scene.add(faceOutlineMesh); // Voxel face highlight
 
             // --- Window Resize Listener ---
             window.addEventListener('resize', onWindowResize);
         }
 
         // --- Resize Handler (Unchanged) ---
-        function onWindowResize() { /* ... no changes ... */
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
+        function onWindowResize() { /* ... */ }
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // --- Raycasting Function (Unchanged) ---
-        // Raycasting still works on the global `objects` array, which contains all individual block meshes
-         function getIntersection() { /* ... no changes ... */
+        // --- Raycasting Function (Filter outlines) ---
+         function getIntersection() {
             raycaster.setFromCamera(pointer, camera);
+            // Intersect against all 'objects' (currently individual blocks)
             const intersects = raycaster.intersectObjects(objects, false);
-             const validIntersects = intersects.filter(intersect => intersect.object !== faceOutlineMesh);
+
+             // Filter out intersections with the voxel face outline AND chunk outlines
+             const validIntersects = intersects.filter(intersect => {
+                 return intersect.object !== faceOutlineMesh && !intersect.object.userData.isChunkOutline;
+             });
+
              return validIntersects.length > 0 ? validIntersects[0] : null;
          }
 
-        // --- Update Voxel Face Outline Position/Visibility/Orientation (Unchanged) ---
-        // This uses the intersection data which still provides world coordinates from mesh.userData
-        function updateVoxelOutline() { /* ... no changes ... */
+        // --- Update Voxel Face Outline (Unchanged) ---
+        function updateVoxelOutline() { /* ... */ }
+        function updateVoxelOutline() {
              const intersection = getIntersection();
              if (intersection && intersection.object.userData && typeof intersection.object.userData.x !== 'undefined' && intersection.face) {
-                const blockCenter = intersection.object.position;
-                const faceNormal = intersection.face.normal.clone();
+                const blockCenter = intersection.object.position; const faceNormal = intersection.face.normal.clone();
                 const outlinePosition = blockCenter.clone().addScaledVector(faceNormal, 0.501);
                 faceOutlineMesh.position.copy(outlinePosition);
-                const lookAtTarget = outlinePosition.clone().add(faceNormal);
-                faceOutlineMesh.lookAt(lookAtTarget);
+                const lookAtTarget = outlinePosition.clone().add(faceNormal); faceOutlineMesh.lookAt(lookAtTarget);
                 faceOutlineMesh.visible = true;
              } else {
                  faceOutlineMesh.visible = false;
              }
         }
 
-        // --- Animation Loop ---
+        // --- Animation Loop (Mostly Unchanged) ---
         function animate() {
             requestAnimationFrame(animate);
             const time = performance.now();
             const delta = Math.max(0.0001, Math.min(0.05, (time - prevTime) / 1000));
             prevTime = time;
 
-            // --- Calculate and Display Info ---
+            // --- Info Display Update (Unchanged) ---
             const fps = 1 / delta;
-            const playerPos = controls.getObject().position;
-            const playerRot = controls.getObject().rotation;
-            const yawDeg = THREE.MathUtils.radToDeg(playerRot.y);
-            const pitchDeg = THREE.MathUtils.radToDeg(playerRot.x);
-
-            // Calculate player's current chunk coordinates
+            const playerPos = controls.getObject().position; const playerRot = controls.getObject().rotation;
+            const yawDeg = THREE.MathUtils.radToDeg(playerRot.y); const pitchDeg = THREE.MathUtils.radToDeg(playerRot.x);
             const playerChunkCoords = getChunkCoords(playerPos.x, playerPos.y, playerPos.z);
-
             if (fpsValueSpan) fpsValueSpan.textContent = Math.round(fps);
-            if (posXSpan) posXSpan.textContent = playerPos.x.toFixed(2);
-            if (posYSpan) posYSpan.textContent = playerPos.y.toFixed(2);
-            if (posZSpan) posZSpan.textContent = playerPos.z.toFixed(2);
-            if (viewYawSpan) viewYawSpan.textContent = ((yawDeg % 360 + 360) % 360).toFixed(1);
-            if (viewPitchSpan) viewPitchSpan.textContent = pitchDeg.toFixed(1);
-            // Display player chunk coordinates
+            if (posXSpan) posXSpan.textContent = playerPos.x.toFixed(2); if (posYSpan) posYSpan.textContent = playerPos.y.toFixed(2); if (posZSpan) posZSpan.textContent = playerPos.z.toFixed(2);
+            if (viewYawSpan) viewYawSpan.textContent = ((yawDeg % 360 + 360) % 360).toFixed(1); if (viewPitchSpan) viewPitchSpan.textContent = pitchDeg.toFixed(1);
             if (chunkCoordsSpan) chunkCoordsSpan.textContent = `${playerChunkCoords.x},${playerChunkCoords.y},${playerChunkCoords.z}`;
 
 
              if (controls.isLocked) {
-                // --- Physics & Movement (Largely Unchanged) ---
-                // It uses the chunk-aware checkCollision function now
-
-                velocity.x -= velocity.x * 10.0 * delta;
-                velocity.z -= velocity.z * 10.0 * delta;
+                // --- Physics & Movement (Uses chunk-aware checkCollision) ---
+                velocity.x -= velocity.x * 10.0 * delta; velocity.z -= velocity.z * 10.0 * delta;
                 velocity.y -= gravity * delta;
-
-                direction.z = Number(moveForward) - Number(moveBackward);
-                direction.x = Number(moveRight) - Number(moveLeft);
-                // direction.normalize(); // Optional for consistent speed
-
-                const cameraDirection = new THREE.Vector3();
-                controls.getObject().getWorldDirection(cameraDirection);
+                direction.z = Number(moveForward) - Number(moveBackward); direction.x = Number(moveRight) - Number(moveLeft);
+                const cameraDirection = new THREE.Vector3(); controls.getObject().getWorldDirection(cameraDirection);
                 const forward = new THREE.Vector3(cameraDirection.x, 0, cameraDirection.z).normalize();
-                const right = new THREE.Vector3();
-                right.crossVectors(forward, camera.up).normalize(); // Corrected strafe
+                const right = new THREE.Vector3(); right.crossVectors(forward, camera.up).normalize();
+                const currentSpeed = playerSpeed * delta; let velocityChangeX = 0; let velocityChangeZ = 0;
+                if (direction.z !== 0) { velocityChangeX += forward.x * direction.z * currentSpeed; velocityChangeZ += forward.z * direction.z * currentSpeed; }
+                if (direction.x !== 0) { velocityChangeX += right.x * direction.x * currentSpeed; velocityChangeZ += right.z * direction.x * currentSpeed; }
+                velocity.x += velocityChangeX; velocity.z += velocityChangeZ;
 
-                const currentSpeed = playerSpeed * delta;
-                let velocityChangeX = 0;
-                let velocityChangeZ = 0;
-                if (direction.z !== 0) {
-                    velocityChangeX += forward.x * direction.z * currentSpeed;
-                    velocityChangeZ += forward.z * direction.z * currentSpeed;
-                }
-                if (direction.x !== 0) {
-                    velocityChangeX += right.x * direction.x * currentSpeed;
-                    velocityChangeZ += right.z * direction.x * currentSpeed;
-                }
-                velocity.x += velocityChangeX;
-                velocity.z += velocityChangeZ;
-
-
-                // --- Collision Detection & Resolution (Axis-by-Axis AABB - uses new checkCollision) ---
-                let deltaPosX = velocity.x * delta;
-                let deltaPosY = velocity.y * delta;
-                let deltaPosZ = velocity.z * delta;
+                // --- Collision Detection & Resolution (Uses chunk-aware checkCollision) ---
+                let deltaPosX = velocity.x * delta; let deltaPosY = velocity.y * delta; let deltaPosZ = velocity.z * delta;
                 let tempPos = playerPos.clone();
 
                 // Resolve X
-                tempPos.x += deltaPosX;
-                if (checkCollision(tempPos)) { velocity.x = 0; deltaPosX = 0; }
-                tempPos.x = playerPos.x;
-
+                tempPos.x += deltaPosX; if (checkCollision(tempPos)) { velocity.x = 0; deltaPosX = 0; } tempPos.x = playerPos.x;
                 // Resolve Z
-                tempPos.z += deltaPosZ;
-                if (checkCollision(tempPos)) { velocity.z = 0; deltaPosZ = 0; }
-                tempPos.z = playerPos.z;
-
+                tempPos.z += deltaPosZ; if (checkCollision(tempPos)) { velocity.z = 0; deltaPosZ = 0; } tempPos.z = playerPos.z;
                 // Resolve Y
-                tempPos.y += deltaPosY;
-                let isOnGround = false;
-                canJump = false;
+                tempPos.y += deltaPosY; let isOnGround = false; canJump = false;
                 if (checkCollision(tempPos)) {
                     if (velocity.y < 0) { // Falling
-                         // Simplified ground check using the chunk-aware checkCollision
-                         // Try to place feet just above the collision point
-                         const checkMinX = Math.floor(playerPos.x - playerHalfWidth);
-                         const checkMaxX = Math.floor(playerPos.x + playerHalfWidth);
-                         const checkMinZ = Math.floor(playerPos.z - playerHalfDepth);
-                         const checkMaxZ = Math.floor(playerPos.z + playerHalfDepth);
-                         const checkYBelow = Math.floor(playerPos.y - playerHeight + deltaPosY); // Y coord feet are trying to enter
-
+                         const checkMinX = Math.floor(playerPos.x - playerHalfWidth); const checkMaxX = Math.floor(playerPos.x + playerHalfWidth);
+                         const checkMinZ = Math.floor(playerPos.z - playerHalfDepth); const checkMaxZ = Math.floor(playerPos.z + playerHalfDepth);
+                         const checkYBelow = Math.floor(playerPos.y - playerHeight + deltaPosY);
                          let highestGroundY = -Infinity;
-                         for (let cx = checkMinX; cx <= checkMaxX; cx++) {
-                             for (let cz = checkMinZ; cz <= checkMaxZ; cz++) {
-                                 const voxelData = getVoxelDataFromWorld(cx, checkYBelow, cz); // Use chunk check
-                                 if (voxelData && (playerPos.y - playerHeight >= checkYBelow + 1 - 0.01)) {
-                                     highestGroundY = Math.max(highestGroundY, checkYBelow + 1);
-                                 }
-                             }
-                         }
-
-                         if (highestGroundY > -Infinity) {
-                              deltaPosY = highestGroundY - (playerPos.y - playerHeight);
-                              isOnGround = true;
-                              canJump = true;
-                              velocity.y = 0;
-                         } else {
-                              velocity.y = 0; deltaPosY = 0; // Generic stop if snap fails
-                         }
-
-                    } else if (velocity.y > 0) { // Jumping/Rising
-                         // Simplified ceiling check using chunk-aware checkCollision
-                         const checkMinX = Math.floor(playerPos.x - playerHalfWidth);
-                         const checkMaxX = Math.floor(playerPos.x + playerHalfWidth);
-                         const checkMinZ = Math.floor(playerPos.z - playerHalfDepth);
-                         const checkMaxZ = Math.floor(playerPos.z + playerHalfDepth);
-                         const checkYAbove = Math.floor(playerPos.y + deltaPosY); // Y coord head is trying to enter
-
+                         for (let cx = checkMinX; cx <= checkMaxX; cx++) { for (let cz = checkMinZ; cz <= checkMaxZ; cz++) {
+                             const voxelData = getVoxelDataFromWorld(cx, checkYBelow, cz);
+                             if (voxelData && (playerPos.y - playerHeight >= checkYBelow + 1 - 0.01)) { highestGroundY = Math.max(highestGroundY, checkYBelow + 1); }
+                         }}
+                         if (highestGroundY > -Infinity) { deltaPosY = highestGroundY - (playerPos.y - playerHeight); isOnGround = true; canJump = true; velocity.y = 0; }
+                         else { velocity.y = 0; deltaPosY = 0; }
+                    } else if (velocity.y > 0) { // Rising
+                         const checkMinX = Math.floor(playerPos.x - playerHalfWidth); const checkMaxX = Math.floor(playerPos.x + playerHalfWidth);
+                         const checkMinZ = Math.floor(playerPos.z - playerHalfDepth); const checkMaxZ = Math.floor(playerPos.z + playerHalfDepth);
+                         const checkYAbove = Math.floor(playerPos.y + deltaPosY);
                          let lowestCeilingY = Infinity;
-                          for (let cx = checkMinX; cx <= checkMaxX; cx++) {
-                             for (let cz = checkMinZ; cz <= checkMaxZ; cz++) {
-                                  const voxelData = getVoxelDataFromWorld(cx, checkYAbove, cz); // Use chunk check
-                                  if (voxelData && (playerPos.y <= checkYAbove + 0.01)) {
-                                     lowestCeilingY = Math.min(lowestCeilingY, checkYAbove);
-                                 }
-                             }
-                         }
-                          if (lowestCeilingY < Infinity) {
-                              deltaPosY = lowestCeilingY - playerPos.y - 0.01;
-                              velocity.y = 0;
-                         } else {
-                             velocity.y = 0; deltaPosY = 0; // Generic stop if snap fails
-                         }
-                    } else { // Moving horizontally, but collided?
-                         velocity.y = 0; deltaPosY = 0;
-                    }
+                          for (let cx = checkMinX; cx <= checkMaxX; cx++) { for (let cz = checkMinZ; cz <= checkMaxZ; cz++) {
+                              const voxelData = getVoxelDataFromWorld(cx, checkYAbove, cz);
+                              if (voxelData && (playerPos.y <= checkYAbove + 0.01)) { lowestCeilingY = Math.min(lowestCeilingY, checkYAbove); }
+                          }}
+                          if (lowestCeilingY < Infinity) { deltaPosY = lowestCeilingY - playerPos.y - 0.01; velocity.y = 0; }
+                          else { velocity.y = 0; deltaPosY = 0; }
+                    } else { velocity.y = 0; deltaPosY = 0; }
                 }
 
+                // Apply Final Movement
+                playerPos.x += deltaPosX; playerPos.y += deltaPosY; playerPos.z += deltaPosZ;
 
-                // --- Apply Final Movement Deltas ---
-                playerPos.x += deltaPosX;
-                playerPos.y += deltaPosY;
-                playerPos.z += deltaPosZ;
-
-                // --- Prevent falling through the void ---
+                // Prevent falling out of world
                 if (playerPos.y < -20) {
                     console.log("Fell out of world, resetting position.");
-                    playerPos.set(0, groundHeight + playerHeight + 5, 0);
-                    velocity.set(0,0,0);
-                    canJump = false;
+                    playerPos.set(0, groundHeight + playerHeight + 5, 0); velocity.set(0,0,0); canJump = false;
                 }
 
                 // Update voxel outline
                 updateVoxelOutline();
 
              } else { // Paused
-                 velocity.set(0, 0, 0);
-                 canJump = false;
+                 velocity.set(0, 0, 0); canJump = false;
                  faceOutlineMesh.visible = false;
              }
 
