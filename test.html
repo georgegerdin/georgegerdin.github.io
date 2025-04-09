@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Changed Title -->
-    <title>Simple 3D Block Game (Three.js) - 16x16x16 Chunks & Outlines</title>
+    <title>Simple 3D Block Game - Chickens!</title>
     <style>
         /* --- Styles remain the same as before --- */
         body { margin: 0; overflow: hidden; font-family: sans-serif; background-color: #7ec0ee; }
@@ -104,12 +104,12 @@
 <body>
     <div id="blocker">
         <div id="instructions">
-            <h1>Simple 3D Blocks - 16x16x16 Chunks!</h1> <!-- Updated Title -->
+            <h1>Simple 3D Blocks - Chickens!</h1> <!-- Updated Title -->
             <p>Click to Play</p>
             <p>(W, A, S, D = Move, SPACE = Jump, MOUSE = Look)</p>
             <p>Left Click = Place Block, Right Click = Remove Block</p>
             <p>SCROLL WHEEL = Change Block Type</p>
-             <p style="color: purple;">Chunks are now 16x16x16! Chunk outlines visible (red).</p> <!-- Updated Desc -->
+             <p style="color: green;">Added chickens! (White Spheres)</p> <!-- Updated Desc -->
         </div>
     </div>
 
@@ -153,10 +153,10 @@
         const objects = []; // Holds meshes for raycasting (all blocks)
 
         // --- Chunk Configuration ---
-        const chunkSize = 16; // <<< CHANGED chunk size
+        const chunkSize = 16;
 
         // --- World Dimensions (in blocks, used for generation bounds) ---
-        const worldWidth = 20; // Note: Initial generation might only fill parts of chunks
+        const worldWidth = 20;
         const worldDepth = 20;
         const worldHeight = 10; // Max build height (relative to y=0)
         const groundHeight = 5; // Initial ground level (y-coordinate)
@@ -166,7 +166,7 @@
         let moveBackward = false;
         let moveLeft = false;
         let moveRight = false;
-        let moveDown = false;
+        let moveDown = false; // Note: This isn't used for movement, might remove later
         let canJump = false;
 
         // Physics/Movement variables
@@ -186,75 +186,117 @@
         const toolbar = document.getElementById('toolbar');
         let fpsValueSpan, posXSpan, posYSpan, posZSpan, viewYawSpan, viewPitchSpan, chunkCoordsSpan;
 
-        // --- Tool Management (Unchanged) ---
-        const textureUrls = { /* ... */
+        // --- Tool Management ---
+        const textureUrls = {
             grass: 'grass.jpg', dirt: 'dirt.jpg', stone: 'cobble.jpg',
             wood: 'wood.jpg', leaves: 'leaves.webp', sand: 'sand.png',
         };
+        // Example texture URLs (replace with your actual paths or URLs)
+        // Ensure these files exist in the same directory or provide correct paths.
+        textureUrls.grass = 'https://threejsfundamentals.org/threejs/resources/images/minecraft/grass.jpg';
+        textureUrls.dirt = 'https://threejsfundamentals.org/threejs/resources/images/minecraft/dirt.jpg';
+        textureUrls.stone = 'https://threejsfundamentals.org/threejs/resources/images/minecraft/cobblestone.jpg';
+        textureUrls.wood = 'https://threejsfundamentals.org/threejs/resources/images/minecraft/oak_log.jpg';
+        textureUrls.leaves = 'https://threejsfundamentals.org/threejs/resources/images/minecraft/oak_leaves.png'; // Assuming a .png for potential transparency
+        textureUrls.sand = 'https://threejsfundamentals.org/threejs/resources/images/minecraft/sand.jpg';
+
+
         const toolTypes = Object.keys(textureUrls);
         let currentToolIndex = 0;
         let currentTool = toolTypes[currentToolIndex];
 
-        // --- Texture Loading (Unchanged) ---
+        // --- Texture Loading ---
         const textureLoader = new THREE.TextureLoader();
-        const textures = { /* ... */
+        const textures = {
             dirt: textureLoader.load(textureUrls.dirt),
-            grass: textureLoader.load('grass.jpg'),
-            grass_top: textureLoader.load(textureUrls.grass),
+            grass: textureLoader.load(textureUrls.grass), // Side texture
+            grass_top: textureLoader.load(textureUrls.grass), // Top texture (reuse side for now)
             stone: textureLoader.load(textureUrls.stone),
-            wood: textureLoader.load('wood.jpg'),
-            wood_top: textureLoader.load(textureUrls.wood),
+            wood: textureLoader.load(textureUrls.wood), // Side texture
+            wood_top: textureLoader.load(textureUrls.wood), // Top/Bottom texture (reuse side for now)
             leaves: textureLoader.load(textureUrls.leaves),
             sand: textureLoader.load(textureUrls.sand),
         };
+        // Apply nearest neighbor filtering for pixelated look
         for (const key in textures) {
             if (textures[key] instanceof THREE.Texture) {
                 textures[key].magFilter = THREE.NearestFilter;
-                textures[key].minFilter = THREE.NearestFilter;
+                textures[key].minFilter = THREE.NearestFilter; // Use NearestFilter for min as well
             }
         }
+        // Specific texture overrides if needed (e.g., different top textures)
+        textures.grass_top = textureLoader.load('https://threejsfundamentals.org/threejs/resources/images/minecraft/grass_top.jpg');
+        textures.grass_top.magFilter = THREE.NearestFilter; textures.grass_top.minFilter = THREE.NearestFilter;
+        textures.wood_top = textureLoader.load('https://threejsfundamentals.org/threejs/resources/images/minecraft/oak_log_top.jpg');
+        textures.wood_top.magFilter = THREE.NearestFilter; textures.wood_top.minFilter = THREE.NearestFilter;
+        textures.leaves.transparent = true; // Enable transparency for leaves if using alpha
 
-        // --- Material Definitions (Unchanged) ---
-         const materials = { /* ... */
+
+        // --- Material Definitions ---
+         const materials = {
             grass: [
-                new THREE.MeshLambertMaterial({ map: textures.grass }), new THREE.MeshLambertMaterial({ map: textures.grass }),
-                new THREE.MeshLambertMaterial({ map: textures.grass_top }), new THREE.MeshLambertMaterial({ map: textures.dirt }),
-                new THREE.MeshLambertMaterial({ map: textures.grass }), new THREE.MeshLambertMaterial({ map: textures.grass }),
+                new THREE.MeshLambertMaterial({ map: textures.grass }), // right
+                new THREE.MeshLambertMaterial({ map: textures.grass }), // left
+                new THREE.MeshLambertMaterial({ map: textures.grass_top }), // top
+                new THREE.MeshLambertMaterial({ map: textures.dirt }), // bottom
+                new THREE.MeshLambertMaterial({ map: textures.grass }), // front
+                new THREE.MeshLambertMaterial({ map: textures.grass }), // back
             ],
             dirt: new THREE.MeshLambertMaterial({ map: textures.dirt }),
             stone: new THREE.MeshLambertMaterial({ map: textures.stone }),
             wood: [
-                 new THREE.MeshLambertMaterial({ map: textures.wood }), new THREE.MeshLambertMaterial({ map: textures.wood }),
-                 new THREE.MeshLambertMaterial({ map: textures.wood_top }), new THREE.MeshLambertMaterial({ map: textures.wood_top }),
-                 new THREE.MeshLambertMaterial({ map: textures.wood }), new THREE.MeshLambertMaterial({ map: textures.wood }),
+                 new THREE.MeshLambertMaterial({ map: textures.wood }), // right
+                 new THREE.MeshLambertMaterial({ map: textures.wood }), // left
+                 new THREE.MeshLambertMaterial({ map: textures.wood_top }), // top
+                 new THREE.MeshLambertMaterial({ map: textures.wood_top }), // bottom
+                 new THREE.MeshLambertMaterial({ map: textures.wood }), // front
+                 new THREE.MeshLambertMaterial({ map: textures.wood }), // back
             ],
-            leaves: new THREE.MeshLambertMaterial({ map: textures.leaves, alphaTest: 0.5, side: THREE.DoubleSide }),
+            // Make leaves slightly transparent and visible from both sides
+            leaves: new THREE.MeshLambertMaterial({
+                map: textures.leaves,
+                alphaTest: 0.1, // Adjust this value if needed (0 to 1)
+                transparent: true,
+                side: THREE.DoubleSide // Render both faces
+             }),
             sand: new THREE.MeshLambertMaterial({ map: textures.sand }),
         };
 
-        // --- Raycasting (Unchanged) ---
+        // --- Raycasting ---
         const raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, 0, -1), 0, 5);
-        const pointer = new THREE.Vector2(0, 0);
+        const pointer = new THREE.Vector2(0, 0); // Center of the screen
 
-        // --- Face Outline (Unchanged) ---
+        // --- Face Outline ---
         const faceOutlineGeometry = new THREE.PlaneGeometry(1, 1);
         const faceOutlineMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00, side: THREE.DoubleSide, transparent: true, opacity: 0.4, depthTest: false });
         const faceOutlineMesh = new THREE.Mesh(faceOutlineGeometry, faceOutlineMaterial);
         faceOutlineMesh.visible = false;
 
-        // --- Chunk Outline Material (NEW) ---
+        // --- Chunk Outline Material ---
         const chunkOutlineMaterial = new THREE.LineBasicMaterial({
             color: 0xff0000, // Red color for outlines
-            depthTest: true // Draw outlines on top of everything
+            depthTest: true // Draw outlines normally
         });
+
+        // --- Entity Management ---
+        const entities = []; // Array to hold all active entities (e.g., chickens)
+        const chickenRadius = 0.3;
+        const chickenHeight = chickenRadius * 2; // For collision checks relative to center
+        const chickenSpeed = 2.0; // Units per second
+        const chickenWalkCycleDuration = 3.0; // Seconds before potentially changing direction
+        const fallDeathY = -20; // Y-level below which entities are removed
+
+        // --- Chicken Visuals (shared) ---
+        const chickenGeometry = new THREE.SphereGeometry(chickenRadius, 8, 6); // Low poly sphere
+        const chickenMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff }); // White
 
         // Timing
         let prevTime = performance.now();
-        let lastInfoUpdateTime = 0;
+        let lastInfoUpdateTime = 0; // Not currently used, but could be for throttling updates
 
 
         // ===============================================================
-        // ===== CHUNK CLASS DEFINITION (Outline added) ==================
+        // ===== CHUNK CLASS DEFINITION ==================================
         // ===============================================================
         class Chunk {
             constructor(chunkX, chunkY, chunkZ) {
@@ -275,7 +317,7 @@
             }
 
             // Initialize the 3D array with null values
-            initVoxels() { /* ... no changes ... */
+            initVoxels() {
                 const arr = new Array(chunkSize);
                 for (let x = 0; x < chunkSize; x++) {
                     arr[x] = new Array(chunkSize);
@@ -286,7 +328,7 @@
                 return arr;
             }
 
-             // --- NEW: Create the visual outline for the chunk ---
+             // --- Create the visual outline for the chunk ---
              createOutlineMesh() {
                 const geometry = new THREE.BoxGeometry(chunkSize, chunkSize, chunkSize);
                 const edges = new THREE.EdgesGeometry(geometry);
@@ -298,14 +340,14 @@
                     this.worldOrigin.y + chunkSize / 2,
                     this.worldOrigin.z + chunkSize / 2
                 );
-                // Make sure it's not accidentally raycasted
+                // Make sure it's not accidentally raycasted or counted as a block
                 line.userData.isChunkOutline = true; // Custom flag
 
                 return line;
             }
 
             // Get voxel data at LOCAL coordinates (0 to chunkSize-1)
-            getVoxel(localX, localY, localZ) { /* ... no changes ... */
+            getVoxel(localX, localY, localZ) {
                  if (this.isValidLocalCoord(localX, localY, localZ)) {
                      return this.voxels[localX][localY][localZ];
                  }
@@ -313,7 +355,7 @@
             }
 
             // Set voxel data at LOCAL coordinates
-            setVoxel(localX, localY, localZ, voxelData) { /* ... no changes ... */
+            setVoxel(localX, localY, localZ, voxelData) {
                  if (this.isValidLocalCoord(localX, localY, localZ)) {
                     this.voxels[localX][localY][localZ] = voxelData;
                     return true;
@@ -322,14 +364,14 @@
             }
 
              // Check if local coordinates are within the chunk bounds
-            isValidLocalCoord(lx, ly, lz) { /* ... no changes ... */
+            isValidLocalCoord(lx, ly, lz) {
                 return lx >= 0 && lx < chunkSize &&
                        ly >= 0 && ly < chunkSize &&
                        lz >= 0 && lz < chunkSize;
             }
 
             // Convert WORLD coordinates to LOCAL chunk coordinates
-            worldToLocal(worldX, worldY, worldZ) { /* ... no changes ... */
+            worldToLocal(worldX, worldY, worldZ) {
                 const localX = THREE.MathUtils.euclideanModulo(Math.floor(worldX), chunkSize);
                 const localY = THREE.MathUtils.euclideanModulo(Math.floor(worldY), chunkSize);
                 const localZ = THREE.MathUtils.euclideanModulo(Math.floor(worldZ), chunkSize);
@@ -337,7 +379,7 @@
             }
 
             // Convert LOCAL chunk coordinates to WORLD coordinates
-            localToWorld(localX, localY, localZ) { /* ... no changes ... */
+            localToWorld(localX, localY, localZ) {
                 return {
                     x: this.worldOrigin.x + localX,
                     y: this.worldOrigin.y + localY,
@@ -345,21 +387,21 @@
                 };
             }
 
-            // --- NEW: Method to dispose of chunk resources (useful if unloading) ---
+            // --- Method to dispose of chunk resources (useful if unloading) ---
             dispose() {
                 if (this.outlineMesh) {
                     scene.remove(this.outlineMesh);
                     this.outlineMesh.geometry.dispose();
                     // Material is shared, don't dispose here unless it's the last chunk
                 }
-                // Also iterate through this.voxels and dispose individual block meshes
-                // (more relevant when chunk meshing is not used)
+                // Dispose individual block meshes within the chunk
                 for (let x = 0; x < chunkSize; x++) {
                     for (let y = 0; y < chunkSize; y++) {
                         for (let z = 0; z < chunkSize; z++) {
                             const voxelData = this.voxels[x][y][z];
                             if (voxelData && voxelData.mesh) {
-                                // Scene removal/object list removal happens in removeVoxel
+                                // Scene removal happens in removeVoxel if called individually
+                                // Here we just ensure geometry is cleaned up if the whole chunk goes
                                 voxelData.mesh.geometry.dispose();
                                 // Material disposal skipped (shared/array)
                             }
@@ -374,62 +416,67 @@
         // ===============================================================
 
 
-        // --- Chunk Utility Functions (Unchanged logic, uses new chunkSize) ---
+        // --- Chunk Utility Functions ---
 
-        function getChunkCoords(worldX, worldY, worldZ) { /* ... no changes ... */
+        function getChunkCoords(worldX, worldY, worldZ) {
             const cx = Math.floor(worldX / chunkSize);
             const cy = Math.floor(worldY / chunkSize);
             const cz = Math.floor(worldZ / chunkSize);
             return { x: cx, y: cy, z: cz };
         }
 
-        function getChunkKey(chunkX, chunkY, chunkZ) { /* ... no changes ... */
+        function getChunkKey(chunkX, chunkY, chunkZ) {
             return `${chunkX},${chunkY},${chunkZ}`;
         }
 
         // Get the Chunk object. Creates chunk (and its outline) if it doesn't exist.
-        function getChunk(worldX, worldY, worldZ) { /* ... no changes ... */
+        function getChunk(worldX, worldY, worldZ) {
             const { x: cx, y: cy, z: cz } = getChunkCoords(worldX, worldY, worldZ);
             const key = getChunkKey(cx, cy, cz);
             if (!world[key]) {
-                 // console.log(`Creating chunk at ${key}`); // Constructor now handles outline creation/addition
+                 // console.log(`Creating chunk at ${key}`); // Constructor handles outline creation/addition
                 world[key] = new Chunk(cx, cy, cz);
             }
             return world[key];
         }
 
-        function getVoxelDataFromWorld(worldX, worldY, worldZ) { /* ... no changes ... */
+        function getVoxelDataFromWorld(worldX, worldY, worldZ) {
              // Need to handle cases where the coords fall into a chunk that *should* exist
-             // but hasn't been explicitly created yet (e.g. checking empty space).
+             // but hasn't been explicitly created yet (e.g. checking empty space near border).
              // getChunk ensures the chunk exists before we try accessing it.
-             const chunk = getChunk(worldX, worldY, worldZ); // Ensures chunk exists
+             const chunk = getChunk(worldX, worldY, worldZ); // Gets or creates chunk
              if (chunk) {
                  const localCoords = chunk.worldToLocal(worldX, worldY, worldZ);
-                 // Check bounds again just in case, though worldToLocal should handle it
+                 // Double check bounds (worldToLocal should handle wrap-around correctly)
                  if (chunk.isValidLocalCoord(localCoords.x, localCoords.y, localCoords.z)) {
                     return chunk.getVoxel(localCoords.x, localCoords.y, localCoords.z);
                  }
              }
-            return null; // Voxel doesn't exist or coords invalid
+            return null; // Voxel doesn't exist or coords are out of any loaded chunk range
         }
 
 
-        // --- Utility Functions (Unchanged) ---
-        function getMaterial(type) { /* ... no changes ... */
+        // --- Utility Functions ---
+        function getMaterial(type) {
              if (type === 'grass') return materials.grass;
              if (type === 'wood') return materials.wood;
+             // For single-texture blocks or if array not found
              return materials[type] || materials.stone;
         }
 
 
-        // --- Voxel Management (CHUNK-AWARE - Unchanged logic) ---
-        function addVoxel(worldX, worldY, worldZ, type) { /* ... no changes ... */
+        // --- Voxel Management (CHUNK-AWARE) ---
+        function addVoxel(worldX, worldY, worldZ, type) {
             worldX = Math.floor(worldX);
             worldY = Math.floor(worldY);
             worldZ = Math.floor(worldZ);
 
+            // Check if voxel already exists or trying to build outside reasonable limits
             const existingVoxel = getVoxelDataFromWorld(worldX, worldY, worldZ);
-            if (existingVoxel || worldY < 0 || worldY >= worldHeight * chunkSize ) { // Check against practical world height limit
+            // Adjust height check if needed - this is a soft limit based on initial generation
+            const practicalMaxHeight = worldHeight * chunkSize * 2; // Example limit
+            if (existingVoxel || worldY < 0 || worldY >= practicalMaxHeight ) {
+                // console.log(`Cannot add voxel at ${worldX},${worldY},${worldZ}. Existing: ${!!existingVoxel}, Out of bounds: ${worldY < 0 || worldY >= practicalMaxHeight}`);
                 return;
             }
 
@@ -443,21 +490,24 @@
                  material = materials.stone;
              }
 
+            // Use a single BoxGeometry instance for potential performance improvement
+            // (Though Three.js might already optimize this) - Let's stick to individual for simplicity now.
             const geometry = new THREE.BoxGeometry(1, 1, 1);
             const mesh = new THREE.Mesh(geometry, material);
-            mesh.position.set(worldX + 0.5, worldY + 0.5, worldZ + 0.5);
-            mesh.userData = { x: worldX, y: worldY, z: worldZ, type: type };
+            mesh.position.set(worldX + 0.5, worldY + 0.5, worldZ + 0.5); // Center the mesh in the voxel space
+            mesh.userData = { x: worldX, y: worldY, z: worldZ, type: type, isVoxel: true }; // Add isVoxel flag
 
             scene.add(mesh);
-            objects.push(mesh);
+            objects.push(mesh); // Add to raycasting list
 
+            // Store data in the chunk
             chunk.setVoxel(localCoords.x, localCoords.y, localCoords.z, {
                 type: type,
                 mesh: mesh
             });
         }
 
-         function removeVoxel(worldX, worldY, worldZ) { /* ... no changes ... */
+         function removeVoxel(worldX, worldY, worldZ) {
             worldX = Math.floor(worldX);
             worldY = Math.floor(worldY);
             worldZ = Math.floor(worldZ);
@@ -478,58 +528,82 @@
             const voxelData = chunk.getVoxel(localCoords.x, localCoords.y, localCoords.z);
 
             if (voxelData && voxelData.mesh) {
+                // Remove from scene
                 scene.remove(voxelData.mesh);
+
+                // Remove from raycasting list
                 const index = objects.indexOf(voxelData.mesh);
                 if (index > -1) {
                     objects.splice(index, 1);
                 }
+
+                // Dispose geometry to free GPU memory
                  voxelData.mesh.geometry.dispose();
-                 // Material disposal skipped
+
+                 // Material disposal is tricky with shared materials.
+                 // We generally don't dispose materials unless we're sure they are no longer needed anywhere.
+
+                // Remove from chunk data
                 chunk.setVoxel(localCoords.x, localCoords.y, localCoords.z, null);
                 return true;
             }
+            // console.log(`Voxel not found at ${worldX},${worldY},${worldZ} in chunk ${key}`);
             return false;
         }
 
-        // --- World Generation (Unchanged logic, populates larger chunks) ---
-        function generateWorld() { /* ... no changes ... */
+        // --- World Generation ---
+        function generateWorld() {
             console.log("Generating world...")
+            // Generate initial ground plane
             for (let x = -worldWidth / 2; x < worldWidth / 2; x++) {
                 for (let z = -worldDepth / 2; z < worldDepth / 2; z++) {
                     for (let y = 0; y < groundHeight; y++) {
                         let type = 'stone';
-                         if (y === groundHeight - 1) type = 'grass';
-                         else if (y >= groundHeight - 3) type = 'dirt';
+                         if (y === groundHeight - 1) type = 'grass'; // Top layer is grass
+                         else if (y >= groundHeight - 3) type = 'dirt'; // Layers below grass are dirt
                          addVoxel(x, y, z, type); // Will create chunks as needed
                     }
                 }
             }
-            for (let i = 0; i < 5; i++) {
+            // Generate some simple trees
+            for (let i = 0; i < 5; i++) { // Add 5 trees
+                // Find a random spot on the generated ground
                 const treeX = Math.floor(Math.random() * worldWidth - worldWidth / 2);
                 const treeZ = Math.floor(Math.random() * worldDepth - worldDepth / 2);
-                const treeHeight = 4 + Math.floor(Math.random() * 3);
+                const treeHeight = 4 + Math.floor(Math.random() * 3); // Random height 4-6 blocks
+
+                 // Check if the base block is grass before planting
                  const baseVoxelData = getVoxelDataFromWorld(treeX, groundHeight - 1, treeZ);
                  if (baseVoxelData && baseVoxelData.type === 'grass') {
+                     // Build trunk
                      for(let y = groundHeight; y < groundHeight + treeHeight; y++) {
                          addVoxel(treeX, y, treeZ, 'wood');
                      }
-                    const leavesY = groundHeight + treeHeight;
-                    for(let lx = -2; lx <= 2; lx++) { for(let lz = -2; lz <= 2; lz++) { for(let ly = 0; ly <= 2; ly++) {
-                        if (Math.abs(lx) === 2 && Math.abs(lz) === 2) continue;
-                        if (ly === 2 && (Math.abs(lx) > 1 || Math.abs(lz) > 1)) continue;
-                        const currentY = leavesY + ly; const currentX = treeX + lx; const currentZ = treeZ + lz;
-                        if (lx === 0 && lz === 0 && ly < 1) continue;
-                        if (!getVoxelDataFromWorld(currentX, currentY, currentZ)) {
-                             addVoxel(currentX, currentY, currentZ, 'leaves');
+                    // Add leaves canopy
+                    const leavesY = groundHeight + treeHeight; // Base height of leaves
+                    for(let lx = -2; lx <= 2; lx++) { // 5x5 area
+                        for(let lz = -2; lz <= 2; lz++) {
+                            for(let ly = 0; ly <= 2; ly++) { // 3 blocks high
+                                // Simple leaf shape: skip corners of outer layer and center bottom
+                                if (Math.abs(lx) === 2 && Math.abs(lz) === 2) continue; // Skip outer corners
+                                if (ly === 2 && (Math.abs(lx) > 1 || Math.abs(lz) > 1)) continue; // Taper top layer
+                                const currentY = leavesY + ly;
+                                const currentX = treeX + lx;
+                                const currentZ = treeZ + lz;
+                                // Don't replace trunk or existing blocks
+                                if (lx === 0 && lz === 0 && ly < 1) continue; // Don't put leaves inside top of trunk
+                                if (!getVoxelDataFromWorld(currentX, currentY, currentZ)) { // Only place if empty
+                                     addVoxel(currentX, currentY, currentZ, 'leaves');
+                                }
+                            }
                         }
-                    }}}
+                    }
                  }
             }
             console.log("World generation complete.");
         }
 
-        // --- Toolbar UI Management (Unchanged) ---
-        
+        // --- Toolbar UI Management ---
         function updateToolbarSelection() {
             document.querySelectorAll('#toolbar .tool-button').forEach(btn => btn.classList.remove('selected'));
             const selectedButton = document.getElementById(`tool-${currentTool}`);
@@ -537,245 +611,636 @@
         }
         function setupToolbar() {
              toolTypes.forEach(type => {
-                const url = textureUrls[type]; const button = document.createElement('div');
-                button.id = `tool-${type}`; button.classList.add('tool-button'); button.dataset.type = type;
-                if (url) { button.style.backgroundImage = `url(${url})`; } else { button.style.backgroundColor = '#ff00ff'; console.warn(`Missing texture URL for toolbar type: ${type}`); }
-                button.addEventListener('click', () => { currentTool = type; currentToolIndex = toolTypes.indexOf(type); updateToolbarSelection(); });
+                const url = textureUrls[type];
+                const button = document.createElement('div');
+                button.id = `tool-${type}`;
+                button.classList.add('tool-button');
+                button.dataset.type = type;
+                if (url) {
+                    button.style.backgroundImage = `url(${url})`;
+                } else {
+                    // Fallback or error indicator if texture URL is missing
+                    button.style.backgroundColor = '#ff00ff'; // Magenta = missing texture
+                    console.warn(`Missing texture URL for toolbar type: ${type}`);
+                }
+                button.addEventListener('click', () => {
+                    currentTool = type;
+                    currentToolIndex = toolTypes.indexOf(type);
+                    updateToolbarSelection();
+                });
                 toolbar.appendChild(button);
             });
-            updateToolbarSelection();
+            updateToolbarSelection(); // Set initial selection
         }
 
 
-        // --- Player AABB Helper (Unchanged) ---
+        // --- Player AABB Helper ---
         function getPlayerAABB(position) {
+            // AABB is defined from bottom-center up to top-center
             return new THREE.Box3(
                 new THREE.Vector3(position.x - playerHalfWidth, position.y - playerHeight, position.z - playerHalfDepth),
                 new THREE.Vector3(position.x + playerHalfWidth, position.y,                position.z + playerHalfDepth)
             );
         }
 
-        // --- Collision Check Function (CHUNK-AWARE - Unchanged logic) ---
+        // --- Collision Check Function (CHUNK-AWARE) ---
         function checkCollision(playerPos) {
             const playerAABB = getPlayerAABB(playerPos);
-            const minX = Math.floor(playerAABB.min.x); const maxX = Math.floor(playerAABB.max.x);
-            const minY = Math.floor(playerAABB.min.y); const maxY = Math.floor(playerAABB.max.y);
-            const minZ = Math.floor(playerAABB.min.z); const maxZ = Math.floor(playerAABB.max.z);
+            // Determine the range of world coordinates the player AABB overlaps
+            const minX = Math.floor(playerAABB.min.x);
+            const maxX = Math.floor(playerAABB.max.x);
+            const minY = Math.floor(playerAABB.min.y);
+            const maxY = Math.floor(playerAABB.max.y);
+            const minZ = Math.floor(playerAABB.min.z);
+            const maxZ = Math.floor(playerAABB.max.z);
 
-            for (let x = minX; x <= maxX; x++) { for (let y = minY; y <= maxY; y++) { for (let z = minZ; z <= maxZ; z++) {
-                const voxelData = getVoxelDataFromWorld(x, y, z); // Uses chunk system
-                if (voxelData) {
-                    const blockAABB = new THREE.Box3( new THREE.Vector3(x, y, z), new THREE.Vector3(x + 1, y + 1, z + 1) );
-                    if (playerAABB.intersectsBox(blockAABB)) {
-                        return true;
+            // Iterate through all voxels the player potentially intersects
+            for (let x = minX; x <= maxX; x++) {
+                for (let y = minY; y <= maxY; y++) {
+                    for (let z = minZ; z <= maxZ; z++) {
+                        const voxelData = getVoxelDataFromWorld(x, y, z); // Uses chunk system
+                        if (voxelData) {
+                            // If a voxel exists at this coordinate, create its AABB
+                            const blockAABB = new THREE.Box3(
+                                new THREE.Vector3(x, y, z),
+                                new THREE.Vector3(x + 1, y + 1, z + 1)
+                            );
+                            // Check for intersection
+                            if (playerAABB.intersectsBox(blockAABB)) {
+                                return true; // Collision detected
+                            }
+                        }
                     }
                 }
-            }}}
-            return false;
+            }
+            return false; // No collision detected
         }
 
 
-        // --- Initialization Function (Mostly Unchanged) ---
+        // ===============================================================
+        // ===== CHICKEN ENTITY CLASS ====================================
+        // ===============================================================
+        class Chicken {
+            constructor(posX, posY, posZ) {
+                this.position = new THREE.Vector3(posX, posY + chickenRadius, posZ); // Start centered slightly above ground
+                this.velocity = new THREE.Vector3(0, 0, 0);
+                this.walkDirection = new THREE.Vector3(0, 0, 1); // Initial direction
+                this.walkTimer = Math.random() * chickenWalkCycleDuration; // Random start time for variety
+                this.onGround = false;
+                this.isDead = false; // Flag for removal
+
+                // Create the visual mesh
+                this.mesh = new THREE.Mesh(chickenGeometry, chickenMaterial);
+                this.mesh.position.copy(this.position);
+                this.mesh.userData.entity = this; // Link mesh back to the entity object if needed
+                this.mesh.userData.isEntity = true; // Flag to distinguish from blocks
+                scene.add(this.mesh); // Add mesh to the scene immediately
+                // console.log(`Spawned chicken at ${posX.toFixed(1)}, ${posY.toFixed(1)}, ${posZ.toFixed(1)}`);
+            }
+
+            update(delta) {
+                if (this.isDead) return;
+
+                // --- Behavior: Random Walking ---
+                this.walkTimer -= delta;
+                if (this.walkTimer <= 0) {
+                    // Pick a new random horizontal direction
+                    const angle = Math.random() * Math.PI * 2;
+                    this.walkDirection.set(Math.cos(angle), 0, Math.sin(angle)).normalize();
+                    this.walkTimer = chickenWalkCycleDuration * (0.5 + Math.random()); // Reset timer with some variation
+                }
+
+                // --- Physics ---
+                // Assume falling unless ground is detected
+                this.onGround = false;
+                // Apply gravity
+                this.velocity.y -= gravity * delta;
+
+
+                // --- Collision & Ground Check ---
+                // Check block directly below the chicken's center
+                const checkX = Math.floor(this.position.x);
+                // Check slightly below the bottom sphere point
+                const checkY = Math.floor(this.position.y - chickenRadius - 0.1);
+                const checkZ = Math.floor(this.position.z);
+                const voxelBelow = getVoxelDataFromWorld(checkX, checkY, checkZ);
+
+                let targetPosY = this.position.y + this.velocity.y * delta;
+
+                if (voxelBelow) {
+                    const groundY = checkY + 1 + chickenRadius; // Top of the block + chicken radius
+                    // If moving down and penetrating ground, stop at ground level
+                    if (this.velocity.y <= 0 && targetPosY <= groundY) {
+                        this.velocity.y = 0;
+                        targetPosY = groundY;
+                        this.onGround = true;
+                    }
+                } else {
+                     // If no block below and falling, continue falling
+                    this.onGround = false; // Ensure onGround is false if no voxel found
+                }
+
+                // --- Apply Horizontal Movement (only if on ground for simplicity) ---
+                 let targetPosX = this.position.x;
+                 let targetPosZ = this.position.z;
+
+                 if (this.onGround) {
+                     targetPosX += this.walkDirection.x * chickenSpeed * delta;
+                     targetPosZ += this.walkDirection.z * chickenSpeed * delta;
+
+                     // --- Basic Wall Collision ---
+                     // Check if the new horizontal position is inside a block at feet level
+                     const nextBlockX = Math.floor(targetPosX);
+                     // Check Y level slightly above feet to avoid catching on edges when moving up slopes (though we dont have slopes yet)
+                     const currentBlockY = Math.floor(this.position.y - chickenRadius + 0.1);
+                     const nextBlockZ = Math.floor(targetPosZ);
+
+                     const collisionBlock = getVoxelDataFromWorld(nextBlockX, currentBlockY, nextBlockZ);
+
+                     if (collisionBlock) {
+                         // Hit a wall, stop horizontal movement for this frame
+                         targetPosX = this.position.x;
+                         targetPosZ = this.position.z;
+                         // Force a direction change sooner
+                         this.walkTimer = 0;
+                     }
+                 } // else if (!this.onGround) { // Optional: Air control? Probably not for chickens. }
+
+
+                // --- Update Position ---
+                this.position.x = targetPosX;
+                this.position.y = targetPosY;
+                this.position.z = targetPosZ;
+
+                // --- Death Check ---
+                if (this.position.y < fallDeathY) {
+                    this.isDead = true;
+                    // console.log("Chicken fell out of the world.");
+                }
+
+                // --- Update Mesh Position ---
+                this.mesh.position.copy(this.position);
+            }
+
+            // --- Cleanup ---
+            dispose() {
+                if (this.mesh) {
+                    scene.remove(this.mesh);
+                    // Geometry and Material are shared, so DON'T dispose them here
+                    // unless this is the very last chicken.
+                }
+                 this.mesh = null; // Help garbage collection
+            }
+        }
+        // ===============================================================
+        // ===== END CHICKEN CLASS =======================================
+        // ===============================================================
+
+
+        // --- Spawning Function ---
+        function spawnInitialEntities() {
+            console.log("Spawning entities...");
+            const spawnAttempts = 30; // Try to spawn this many
+            let spawnedCount = 0;
+            const maxChickens = 10; // Maximum number to actually spawn
+
+            for (let i = 0; i < spawnAttempts && spawnedCount < maxChickens; i++) {
+                // Pick a random X/Z within the initial generation area
+                const x = Math.floor(Math.random() * worldWidth - worldWidth / 2);
+                const z = Math.floor(Math.random() * worldDepth - worldDepth / 2);
+
+                // Find the ground level at this X/Z by scanning down
+                let groundY = -1;
+                // Start scan from a bit above the expected ground height
+                for (let y = groundHeight + 5; y >= 0; y--) {
+                    const voxelData = getVoxelDataFromWorld(x, y, z);
+                    if (voxelData) {
+                        // Found the top block, the spawn Y is one block above it
+                        groundY = y + 1;
+                        break;
+                    }
+                }
+
+                // Only spawn if we found ground and it's a suitable block type
+                if (groundY > 0) {
+                    const blockBelow = getVoxelDataFromWorld(x, groundY - 1, z);
+                    // Check if blockBelow exists and is a valid spawn surface
+                    if(blockBelow && (blockBelow.type === 'grass' || blockBelow.type === 'dirt' || blockBelow.type === 'sand')) {
+                        // Spawn chicken centered in the block horizontally, at the calculated groundY
+                        const chicken = new Chicken(x + 0.5, groundY, z + 0.5);
+                        entities.push(chicken);
+                        spawnedCount++;
+                    }
+                }
+            }
+            console.log(`Spawned ${spawnedCount} chickens.`);
+        }
+
+        // --- Initialization Function ---
         function init() {
-            // Scene, Camera, Renderer, Lighting, Controls setup... (Unchanged)
+            // Scene
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87ceeb);
-            scene.fog = new THREE.Fog(0x87ceeb, 10, 90);
+            scene.background = new THREE.Color(0x87ceeb); // Sky blue background
+            scene.fog = new THREE.Fog(0x87ceeb, 10, 90); // Fog matches background
+
+            // Camera
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+            // Position player slightly above the ground height
             camera.position.set(0, groundHeight + playerHeight + 0.5, 5);
-            renderer = new THREE.WebGLRenderer({ antialias: false });
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: false }); // No antialiasing for blocky look
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setPixelRatio(window.devicePixelRatio); // Use device resolution
             document.body.appendChild(renderer.domElement);
-            const ambientLight = new THREE.AmbientLight(0xcccccc, 0.9); scene.add(ambientLight);
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0); directionalLight.position.set(50, 80, 40); scene.add(directionalLight);
-            controls = new PointerLockControls(camera, document.body); scene.add(controls.getObject());
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xcccccc, 0.9); // Soft ambient light
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0); // Simulate sunlight
+            directionalLight.position.set(50, 80, 40); // Position light source
+            scene.add(directionalLight);
+
+            // Controls
+            controls = new PointerLockControls(camera, document.body);
+            scene.add(controls.getObject()); // Add camera holder to scene
+
+            // Pointer Lock Listeners
             instructions.addEventListener('click', () => controls.lock());
             controls.addEventListener('lock', () => { instructions.style.display = 'none'; blocker.style.display = 'none'; });
             controls.addEventListener('unlock', () => { blocker.style.display = 'flex'; instructions.style.display = ''; });
 
-             // Keyboard Input (Unchanged) ...
+            // Keyboard Input
              const onKeyDown = (event) => {
-                 if (event.repeat) return;
+                 if (event.repeat) return; // Ignore holding key down repeats for single actions like jump
                 switch (event.code) {
-                    case 'ArrowUp': case 'KeyW': moveForward = true; break; case 'ArrowLeft': case 'KeyA': moveLeft = true; break;
-                    case 'ArrowDown': case 'KeyS': moveBackward = true; break; case 'ArrowRight': case 'KeyD': moveRight = true; break;
-                    case 'Space': if (canJump) { velocity.y = jumpVelocity; canJump = false; } break;
+                    case 'ArrowUp': case 'KeyW': moveForward = true; break;
+                    case 'ArrowLeft': case 'KeyA': moveLeft = true; break;
+                    case 'ArrowDown': case 'KeyS': moveBackward = true; break;
+                    case 'ArrowRight': case 'KeyD': moveRight = true; break;
+                    case 'Space':
+                        if (canJump) {
+                            velocity.y = jumpVelocity;
+                            canJump = false; // Prevent double jumps
+                        }
+                        break;
                 }
             };
              const onKeyUp = (event) => {
                 switch (event.code) {
-                    case 'ArrowUp': case 'KeyW': moveForward = false; break; case 'ArrowLeft': case 'KeyA': moveLeft = false; break;
-                    case 'ArrowDown': case 'KeyS': moveBackward = false; break; case 'ArrowRight': case 'KeyD': moveRight = false; break;
+                    case 'ArrowUp': case 'KeyW': moveForward = false; break;
+                    case 'ArrowLeft': case 'KeyA': moveLeft = false; break;
+                    case 'ArrowDown': case 'KeyS': moveBackward = false; break;
+                    case 'ArrowRight': case 'KeyD': moveRight = false; break;
                 }
             };
-            document.addEventListener('keydown', onKeyDown); document.addEventListener('keyup', onKeyUp);
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
 
-            // Mouse Input (Block Placement/Removal - Unchanged logic) ...
+            // Mouse Input (Block Placement/Removal)
              window.addEventListener('mousedown', (event) => {
-                 if (!controls.isLocked) return;
-                 const intersection = getIntersection();
-                 if (!intersection) return;
-                 const obj = intersection.object; const hitCoords = obj.userData;
-                 if (!hitCoords || typeof hitCoords.x === 'undefined') { console.log("Clicked non-world object."); return; }
-                 const normal = intersection.face.normal.clone();
-                 if (event.button === 0) { // Place
-                     const placeCoords = { x: hitCoords.x + normal.x, y: hitCoords.y + normal.y, z: hitCoords.z + normal.z };
-                     const blockAABB = new THREE.Box3( new THREE.Vector3(placeCoords.x, placeCoords.y, placeCoords.z), new THREE.Vector3(placeCoords.x + 1, placeCoords.y + 1, placeCoords.z + 1) );
+                 if (!controls.isLocked) return; // Only interact when controls are locked
+
+                 const intersection = getIntersection(); // Find where the player is looking
+                 if (!intersection) return; // Didn't hit anything within range
+
+                 // Ensure we hit a voxel block, not an entity or outline
+                 const obj = intersection.object;
+                 const hitData = obj.userData;
+                 if (!hitData || !hitData.isVoxel) {
+                    // console.log("Clicked non-voxel object.");
+                     return;
+                 }
+
+                 const hitCoords = {x: hitData.x, y: hitData.y, z: hitData.z};
+                 const normal = intersection.face.normal.clone(); // Get the normal of the clicked face
+
+                 if (event.button === 0) { // Left Click: Place Block
+                     // Calculate position to place the new block adjacent to the clicked face
+                     const placeCoords = {
+                         x: hitCoords.x + normal.x,
+                         y: hitCoords.y + normal.y,
+                         z: hitCoords.z + normal.z
+                     };
+
+                     // Basic check: Prevent placing block inside the player
+                     const blockAABB = new THREE.Box3(
+                         new THREE.Vector3(placeCoords.x, placeCoords.y, placeCoords.z),
+                         new THREE.Vector3(placeCoords.x + 1, placeCoords.y + 1, placeCoords.z + 1)
+                     );
                      const playerAABB = getPlayerAABB(controls.getObject().position);
                      if (!playerAABB.intersectsBox(blockAABB)) {
-                         addVoxel(placeCoords.x, placeCoords.y, placeCoords.z, currentTool); // Uses chunk-aware add
-                     } else { console.log("Cannot place block inside player"); }
-                 } else if (event.button === 2) { // Remove
-                    removeVoxel(hitCoords.x, hitCoords.y, hitCoords.z); // Uses chunk-aware remove
+                         addVoxel(placeCoords.x, placeCoords.y, placeCoords.z, currentTool); // Use chunk-aware add
+                     } else {
+                         console.log("Cannot place block inside player");
+                     }
+
+                 } else if (event.button === 2) { // Right Click: Remove Block
+                    removeVoxel(hitCoords.x, hitCoords.y, hitCoords.z); // Use chunk-aware remove
                  }
              });
 
-            // Scroll Wheel Input (Tool Switching - Unchanged) ...
+            // Scroll Wheel Input (Tool Switching)
             window.addEventListener('wheel', (event) => {
-                if (!controls.isLocked) return; event.preventDefault();
-                const scrollDirection = Math.sign(event.deltaY);
-                if (scrollDirection > 0) { currentToolIndex = (currentToolIndex + 1) % toolTypes.length; }
-                else if (scrollDirection < 0) { currentToolIndex = (currentToolIndex - 1 + toolTypes.length) % toolTypes.length; }
-                currentTool = toolTypes[currentToolIndex]; updateToolbarSelection();
-            }, { passive: false });
+                if (!controls.isLocked) return;
+                event.preventDefault(); // Prevent page scrolling
 
-            // Get References to Info Display Elements (Unchanged) ...
-            fpsValueSpan = document.getElementById('fpsValue'); posXSpan = document.getElementById('posX');
-            posYSpan = document.getElementById('posY'); posZSpan = document.getElementById('posZ');
-            viewYawSpan = document.getElementById('viewYaw'); viewPitchSpan = document.getElementById('viewPitch');
+                const scrollDirection = Math.sign(event.deltaY); // +1 for down, -1 for up
+
+                if (scrollDirection > 0) { // Scroll down/forward
+                    currentToolIndex = (currentToolIndex + 1) % toolTypes.length;
+                } else if (scrollDirection < 0) { // Scroll up/backward
+                    currentToolIndex = (currentToolIndex - 1 + toolTypes.length) % toolTypes.length;
+                }
+
+                currentTool = toolTypes[currentToolIndex];
+                updateToolbarSelection();
+            }, { passive: false }); // Need passive: false to preventDefault scroll
+
+            // Get References to Info Display Elements
+            fpsValueSpan = document.getElementById('fpsValue');
+            posXSpan = document.getElementById('posX');
+            posYSpan = document.getElementById('posY');
+            posZSpan = document.getElementById('posZ');
+            viewYawSpan = document.getElementById('viewYaw');
+            viewPitchSpan = document.getElementById('viewPitch');
             chunkCoordsSpan = document.getElementById('chunkCoords');
 
-            // --- World Generation & UI Setup ---
-            generateWorld(); // Calls the world generation function
-            setupToolbar(); // Creates toolbar buttons
+            // --- World Generation, Entity Spawning & UI Setup ---
+            generateWorld();
+            spawnInitialEntities(); // Spawn chickens AFTER world exists
+            setupToolbar();
 
             // --- Add Face Outline to Scene ---
-            scene.add(faceOutlineMesh); // Voxel face highlight
+            scene.add(faceOutlineMesh); // Voxel face highlight mesh
 
             // --- Window Resize Listener ---
             window.addEventListener('resize', onWindowResize);
         }
 
-        // --- Resize Handler (Unchanged) ---
+        // --- Resize Handler ---
         function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // --- Raycasting Function (Filter outlines) ---
+        // --- Raycasting Function (Filter outlines and entities) ---
          function getIntersection() {
-            raycaster.setFromCamera(pointer, camera);
-            // Intersect against all 'objects' (currently individual blocks)
-            const intersects = raycaster.intersectObjects(objects, false);
+            raycaster.setFromCamera(pointer, camera); // Ray from camera center
 
-             // Filter out intersections with the voxel face outline AND chunk outlines
+            // Intersect against 'objects' (currently individual block meshes)
+            const intersects = raycaster.intersectObjects(objects, false); // Don't check children
+
+             // Filter out intersections that are not actual voxels
+             // (e.g., chunk outlines, potentially entities if they were in 'objects')
              const validIntersects = intersects.filter(intersect => {
-                 return intersect.object !== faceOutlineMesh && !intersect.object.userData.isChunkOutline;
+                 return intersect.object.userData.isVoxel === true; // Only hit objects marked as voxels
              });
 
-             return validIntersects.length > 0 ? validIntersects[0] : null;
+             return validIntersects.length > 0 ? validIntersects[0] : null; // Return the closest valid intersection
          }
 
-        // --- Update Voxel Face Outline (Unchanged) ---
+        // --- Update Voxel Face Outline ---
         function updateVoxelOutline() {
-             const intersection = getIntersection();
-             if (intersection && intersection.object.userData && typeof intersection.object.userData.x !== 'undefined' && intersection.face) {
-                const blockCenter = intersection.object.position; const faceNormal = intersection.face.normal.clone();
-                const outlinePosition = blockCenter.clone().addScaledVector(faceNormal, 0.501);
+             const intersection = getIntersection(); // Use the filtered intersection function
+             if (intersection) { // Already filtered to be a valid voxel hit
+                const blockCenter = intersection.object.position; // Center of the hit block
+                const faceNormal = intersection.face.normal.clone(); // Normal of the hit face
+
+                // Position outline slightly offset from the block face
+                const outlinePosition = blockCenter.clone().addScaledVector(faceNormal, 0.501); // Tiny offset
                 faceOutlineMesh.position.copy(outlinePosition);
-                const lookAtTarget = outlinePosition.clone().add(faceNormal); faceOutlineMesh.lookAt(lookAtTarget);
+
+                // Orient the plane to face outwards from the block
+                const lookAtTarget = outlinePosition.clone().add(faceNormal);
+                faceOutlineMesh.lookAt(lookAtTarget);
+
                 faceOutlineMesh.visible = true;
              } else {
+                 // No valid intersection, hide the outline
                  faceOutlineMesh.visible = false;
              }
         }
 
-        // --- Animation Loop (Mostly Unchanged) ---
+        // --- Animation Loop ---
         function animate() {
-            requestAnimationFrame(animate);
+            requestAnimationFrame(animate); // Loop the animation
+
             const time = performance.now();
+            // Calculate delta time, clamping to prevent large jumps if tab loses focus
             const delta = Math.max(0.0001, Math.min(0.05, (time - prevTime) / 1000));
             prevTime = time;
 
-            // --- Info Display Update (Unchanged) ---
+            // --- Info Display Update ---
             const fps = 1 / delta;
-            const playerPos = controls.getObject().position; const playerRot = controls.getObject().rotation;
-            const yawDeg = THREE.MathUtils.radToDeg(playerRot.y); const pitchDeg = THREE.MathUtils.radToDeg(playerRot.x);
+            const playerPos = controls.getObject().position;
+            const playerRot = controls.getObject().rotation; // Euler rotation
+            // Calculate Yaw (Y rotation) and Pitch (X rotation) in degrees
+            const yawDeg = THREE.MathUtils.radToDeg(playerRot.y);
+            const pitchDeg = THREE.MathUtils.radToDeg(playerRot.x);
+            // Get current chunk coordinates of the player
             const playerChunkCoords = getChunkCoords(playerPos.x, playerPos.y, playerPos.z);
+            // Update DOM elements (check if they exist first)
             if (fpsValueSpan) fpsValueSpan.textContent = Math.round(fps);
-            if (posXSpan) posXSpan.textContent = playerPos.x.toFixed(2); if (posYSpan) posYSpan.textContent = playerPos.y.toFixed(2); if (posZSpan) posZSpan.textContent = playerPos.z.toFixed(2);
-            if (viewYawSpan) viewYawSpan.textContent = ((yawDeg % 360 + 360) % 360).toFixed(1); if (viewPitchSpan) viewPitchSpan.textContent = pitchDeg.toFixed(1);
+            if (posXSpan) posXSpan.textContent = playerPos.x.toFixed(2);
+            if (posYSpan) posYSpan.textContent = playerPos.y.toFixed(2);
+            if (posZSpan) posZSpan.textContent = playerPos.z.toFixed(2);
+            // Normalize Yaw display to 0-360
+            if (viewYawSpan) viewYawSpan.textContent = ((yawDeg % 360 + 360) % 360).toFixed(1);
+            if (viewPitchSpan) viewPitchSpan.textContent = pitchDeg.toFixed(1);
             if (chunkCoordsSpan) chunkCoordsSpan.textContent = `${playerChunkCoords.x},${playerChunkCoords.y},${playerChunkCoords.z}`;
 
 
              if (controls.isLocked) {
-                // --- Physics & Movement (Uses chunk-aware checkCollision) ---
-                velocity.x -= velocity.x * 10.0 * delta; velocity.z -= velocity.z * 10.0 * delta;
+                // --- Player Physics & Movement ---
+                // Apply friction/damping
+                velocity.x -= velocity.x * 10.0 * delta;
+                velocity.z -= velocity.z * 10.0 * delta;
+                // Apply gravity
                 velocity.y -= gravity * delta;
-                direction.z = Number(moveForward) - Number(moveBackward); direction.x = Number(moveRight) - Number(moveLeft);
-                const cameraDirection = new THREE.Vector3(); controls.getObject().getWorldDirection(cameraDirection);
+
+                // Calculate movement direction based on input and camera orientation
+                direction.z = Number(moveForward) - Number(moveBackward);
+                direction.x = Number(moveRight) - Number(moveLeft);
+                direction.normalize(); // Ensure consistent speed diagonally
+
+                // Get camera direction projected onto the horizontal plane
+                const cameraDirection = new THREE.Vector3();
+                controls.getObject().getWorldDirection(cameraDirection);
                 const forward = new THREE.Vector3(cameraDirection.x, 0, cameraDirection.z).normalize();
-                const right = new THREE.Vector3(); right.crossVectors(forward, camera.up).normalize();
-                const currentSpeed = playerSpeed * delta; let velocityChangeX = 0; let velocityChangeZ = 0;
-                if (direction.z !== 0) { velocityChangeX += forward.x * direction.z * currentSpeed; velocityChangeZ += forward.z * direction.z * currentSpeed; }
-                if (direction.x !== 0) { velocityChangeX += right.x * direction.x * currentSpeed; velocityChangeZ += right.z * direction.x * currentSpeed; }
-                velocity.x += velocityChangeX; velocity.z += velocityChangeZ;
+                const right = new THREE.Vector3();
+                right.crossVectors(camera.up, forward).normalize(); // Right vector relative to camera yaw
 
-                // --- Collision Detection & Resolution (Uses chunk-aware checkCollision) ---
-                let deltaPosX = velocity.x * delta; let deltaPosY = velocity.y * delta; let deltaPosZ = velocity.z * delta;
-                let tempPos = playerPos.clone();
+                // Calculate velocity change based on input
+                const currentSpeed = playerSpeed * delta;
+                let velocityChangeX = 0;
+                let velocityChangeZ = 0;
 
-                // Resolve X
-                tempPos.x += deltaPosX; if (checkCollision(tempPos)) { velocity.x = 0; deltaPosX = 0; } tempPos.x = playerPos.x;
-                // Resolve Z
-                tempPos.z += deltaPosZ; if (checkCollision(tempPos)) { velocity.z = 0; deltaPosZ = 0; } tempPos.z = playerPos.z;
-                // Resolve Y
-                tempPos.y += deltaPosY; let isOnGround = false; canJump = false;
+                if (direction.z !== 0) { // Forward/Backward movement
+                    velocityChangeX -= forward.x * direction.z * currentSpeed; // Note: Changed to subtract forward X
+                    velocityChangeZ -= forward.z * direction.z * currentSpeed; // Note: Changed to subtract forward Z
+                }
+                if (direction.x !== 0) { // Left/Right movement
+                    // Using cross product (camera.up, forward) seems inverted? Let's try direct right calc.
+                     const rightDirection = new THREE.Vector3();
+                     rightDirection.crossVectors(controls.getObject().up, cameraDirection).normalize(); // Recalc right based on actual up
+
+                     velocityChangeX -= rightDirection.x * direction.x * currentSpeed; // Apply right movement
+                     velocityChangeZ -= rightDirection.z * direction.x * currentSpeed;
+                 }
+
+
+                // Apply calculated velocity changes (note:+=/-= depends on how vectors calculated)
+                 velocity.x += velocityChangeX; // This seems more logical now
+                 velocity.z += velocityChangeZ;
+
+                // --- Collision Detection & Resolution (Axis-by-axis) ---
+                let deltaPosX = velocity.x * delta;
+                let deltaPosY = velocity.y * delta;
+                let deltaPosZ = velocity.z * delta;
+                let tempPos = playerPos.clone(); // Temporary position for checking
+
+                // Resolve X movement
+                tempPos.x += deltaPosX;
                 if (checkCollision(tempPos)) {
-                    if (velocity.y < 0) { // Falling
+                    velocity.x = 0; // Stop horizontal movement in X if collision
+                    deltaPosX = 0;
+                }
+                tempPos.x = playerPos.x; // Reset temp position X
+
+                // Resolve Z movement
+                tempPos.z += deltaPosZ;
+                if (checkCollision(tempPos)) {
+                    velocity.z = 0; // Stop horizontal movement in Z if collision
+                    deltaPosZ = 0;
+                }
+                tempPos.z = playerPos.z; // Reset temp position Z
+
+                // Resolve Y movement (Falling / Jumping)
+                tempPos.y += deltaPosY;
+                let isOnGround = false;
+                // canJump = false; // Reset jump state each frame unless on ground detected
+
+                if (checkCollision(tempPos)) {
+                    if (velocity.y < 0) { // Falling onto something
+                         // Find the highest block top surface the player is colliding with below them
                          const checkMinX = Math.floor(playerPos.x - playerHalfWidth); const checkMaxX = Math.floor(playerPos.x + playerHalfWidth);
                          const checkMinZ = Math.floor(playerPos.z - playerHalfDepth); const checkMaxZ = Math.floor(playerPos.z + playerHalfDepth);
-                         const checkYBelow = Math.floor(playerPos.y - playerHeight + deltaPosY);
+                         const checkYBelow = Math.floor(playerPos.y - playerHeight + deltaPosY); // Y-coord of blocks to check
                          let highestGroundY = -Infinity;
+
                          for (let cx = checkMinX; cx <= checkMaxX; cx++) { for (let cz = checkMinZ; cz <= checkMaxZ; cz++) {
                              const voxelData = getVoxelDataFromWorld(cx, checkYBelow, cz);
-                             if (voxelData && (playerPos.y - playerHeight >= checkYBelow + 1 - 0.01)) { highestGroundY = Math.max(highestGroundY, checkYBelow + 1); }
+                             // If voxel exists and player feet are coming down onto it
+                             if (voxelData && (playerPos.y - playerHeight >= checkYBelow + 1 - 0.01)) { // Player feet are above or just touching the block top
+                                 highestGroundY = Math.max(highestGroundY, checkYBelow + 1); // The Y coord of the top surface
+                             }
                          }}
-                         if (highestGroundY > -Infinity) { deltaPosY = highestGroundY - (playerPos.y - playerHeight); isOnGround = true; canJump = true; velocity.y = 0; }
-                         else { velocity.y = 0; deltaPosY = 0; }
-                    } else if (velocity.y > 0) { // Rising
+                         // If we found a valid ground surface below
+                         if (highestGroundY > -Infinity) {
+                             deltaPosY = highestGroundY - (playerPos.y - playerHeight); // Adjust deltaY to land exactly on ground
+                             isOnGround = true;
+                             canJump = true; // Allow jumping again
+                             velocity.y = 0; // Stop downward velocity
+                         } else {
+                            // Collision detected but no valid ground found directly below (e.g. side collision while falling)
+                             velocity.y = 0; // Stop vertical movement
+                             deltaPosY = 0;
+                         }
+                    } else if (velocity.y > 0) { // Rising into something (jumping)
+                         // Find the lowest ceiling surface the player is colliding with above them
                          const checkMinX = Math.floor(playerPos.x - playerHalfWidth); const checkMaxX = Math.floor(playerPos.x + playerHalfWidth);
                          const checkMinZ = Math.floor(playerPos.z - playerHalfDepth); const checkMaxZ = Math.floor(playerPos.z + playerHalfDepth);
-                         const checkYAbove = Math.floor(playerPos.y + deltaPosY);
+                         const checkYAbove = Math.floor(playerPos.y + deltaPosY); // Y-coord of blocks to check (player's head level)
                          let lowestCeilingY = Infinity;
+
                           for (let cx = checkMinX; cx <= checkMaxX; cx++) { for (let cz = checkMinZ; cz <= checkMaxZ; cz++) {
                               const voxelData = getVoxelDataFromWorld(cx, checkYAbove, cz);
-                              if (voxelData && (playerPos.y <= checkYAbove + 0.01)) { lowestCeilingY = Math.min(lowestCeilingY, checkYAbove); }
+                              // If voxel exists and player head is moving up into it
+                              if (voxelData && (playerPos.y <= checkYAbove + 0.01)) { // Player head is below or just touching the block bottom
+                                  lowestCeilingY = Math.min(lowestCeilingY, checkYAbove); // The Y coord of the bottom surface
+                              }
                           }}
-                          if (lowestCeilingY < Infinity) { deltaPosY = lowestCeilingY - playerPos.y - 0.01; velocity.y = 0; }
-                          else { velocity.y = 0; deltaPosY = 0; }
-                    } else { velocity.y = 0; deltaPosY = 0; }
+                          // If we found a valid ceiling surface above
+                          if (lowestCeilingY < Infinity) {
+                              deltaPosY = lowestCeilingY - playerPos.y - 0.01; // Adjust deltaY to stop just below ceiling
+                              velocity.y = 0; // Stop upward velocity
+                          } else {
+                              // Collision detected but no ceiling found (e.g. side collision while rising)
+                              // This case is less common, usually X/Z collision handles it first.
+                              velocity.y = 0; // Stop vertical movement
+                              deltaPosY = 0;
+                          }
+                    } else { // Moving horizontally into something (velocity.y is 0)
+                        // Vertical collision shouldn't happen if velocity.y is 0, X/Z checks handle this.
+                        deltaPosY = 0;
+                    }
+                } else {
+                   // No collision in Y direction, check if standing on ground just below current pos
+                   const checkYDirectlyBelow = Math.floor(playerPos.y - playerHeight - 0.1); // Check slightly below feet
+                   const checkMinX = Math.floor(playerPos.x - playerHalfWidth); const checkMaxX = Math.floor(playerPos.x + playerHalfWidth);
+                   const checkMinZ = Math.floor(playerPos.z - playerHalfDepth); const checkMaxZ = Math.floor(playerPos.z + playerHalfDepth);
+                   let groundDirectlyBelow = false;
+                   for (let cx = checkMinX; cx <= checkMaxX; cx++) { for (let cz = checkMinZ; cz <= checkMaxZ; cz++) {
+                       if (getVoxelDataFromWorld(cx, checkYDirectlyBelow, cz)) {
+                           groundDirectlyBelow = true;
+                           break;
+                       }
+                   }}
+                   if (groundDirectlyBelow && velocity.y <= 0) { // Check velocity to ensure not moving upwards away from ground
+                       isOnGround = true;
+                       canJump = true;
+                       // Snap to ground if slightly floating? Optional.
+                       // playerPos.y = checkYDirectlyBelow + 1 + playerHeight;
+                       // velocity.y = 0; // Ensure vertical velocity is zeroed if snapped
+                   } else {
+                       canJump = false; // Not on ground, cannot jump
+                   }
+
                 }
 
-                // Apply Final Movement
-                playerPos.x += deltaPosX; playerPos.y += deltaPosY; playerPos.z += deltaPosZ;
 
-                // Prevent falling out of world
-                if (playerPos.y < -20) {
-                    console.log("Fell out of world, resetting position.");
-                    playerPos.set(0, groundHeight + playerHeight + 5, 0); velocity.set(0,0,0); canJump = false;
+                // Apply Final Calculated Movement Deltas
+                playerPos.x += deltaPosX;
+                playerPos.y += deltaPosY;
+                playerPos.z += deltaPosZ;
+
+                // --- Prevent falling out of world ---
+                if (playerPos.y < fallDeathY) { // Use the same fall death level as chickens
+                    console.log("Player fell out of world, resetting position.");
+                    playerPos.set(0, groundHeight + playerHeight + 5, 0); // Reset position higher up
+                    velocity.set(0,0,0); // Reset velocity
+                    canJump = false;
                 }
 
-                // Update voxel outline
+                // Update voxel outline based on raycast
                 updateVoxelOutline();
 
-             } else { // Paused
-                 velocity.set(0, 0, 0); canJump = false;
-                 faceOutlineMesh.visible = false;
+             } else { // Paused state
+                 velocity.set(0, 0, 0); // Stop player movement when paused
+                 canJump = false;
+                 faceOutlineMesh.visible = false; // Hide voxel outline when paused
              }
 
-            // Render
+            // ==========================================
+            // ===== ENTITY UPDATE LOOP =================
+            // ==========================================
+            // Iterate backwards for safe removal while looping
+            for (let i = entities.length - 1; i >= 0; i--) {
+                const entity = entities[i];
+                entity.update(delta); // Update entity logic (movement, AI, etc.)
+
+                // Check if entity marked itself as dead
+                if (entity.isDead) {
+                    entity.dispose(); // Clean up Three.js resources associated with the entity
+                    entities.splice(i, 1); // Remove entity from the active list
+                }
+            }
+            // ==========================================
+
+
+            // Render the scene
             renderer.render(scene, camera);
         }
 
