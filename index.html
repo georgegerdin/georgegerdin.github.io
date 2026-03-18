@@ -85,12 +85,17 @@
       gap:10px;
       padding:10px;
       background:var(--bg);
+      overflow-y: auto;
+      position: relative; /* Context for absolute map positioning */
     }
 
     .view-wrap{
       display:flex;
       justify-content:center;
       align-items:center;
+      flex-shrink: 0;
+      position: relative; /* Ensure stacking context */
+      z-index: 1;
     }
 
     #view3d{
@@ -111,6 +116,15 @@
       justify-content:center;
       align-items:center;
       min-height:0;
+      
+      /* Mobile Overlay Styles */
+      position: absolute;
+      top: 10px; /* Match .main padding */
+      left: 0;
+      right: 0;
+      height: min(92vw, 420px); /* Match #view3d height */
+      z-index: 10;
+      pointer-events: none; /* Allow clicks to pass through to view when invisible */
     }
 
     #mapCanvas{
@@ -124,6 +138,25 @@
       border:1px solid #444;
       image-rendering:pixelated;
       border-radius:8px;
+      
+      /* Animation properties */
+      opacity: 0;
+      transform: scale(0.9);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      pointer-events: auto; /* Re-enable clicks for the canvas */
+      box-shadow: 0 0 20px rgba(0,0,0,0.8);
+    }
+
+    #mapCanvas:not(.hidden-mobile) {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    /* Mobile hidden state */
+    #mapCanvas.hidden-mobile {
+      opacity: 0;
+      transform: scale(0.9);
+      pointer-events: none; /* Cannot click hidden map */
     }
 
     .hud{
@@ -134,6 +167,7 @@
       font-size:13px;
       line-height:1.4;
       text-align:center;
+      z-index: 2; /* Above view wrap */
     }
 
     .controls{
@@ -170,11 +204,16 @@
 
     .subcontrols button{
       min-height:48px;
-      font-size:16px;
+      font-size:14px;
       border-radius:10px;
       background:#2d2d2d;
       color:#eee;
       border:1px solid #555;
+    }
+
+    #toggleMapBtn {
+        background: #3a3a4a;
+        border-color: #667;
     }
 
     .legend{
@@ -182,6 +221,7 @@
       color:#aaa;
       text-align:center;
       padding-bottom:8px;
+      z-index: 2;
     }
 
     .overlay{
@@ -191,7 +231,7 @@
       display:none;
       align-items:center;
       justify-content:center;
-      z-index:10;
+      z-index:100;
       padding:20px;
     }
 
@@ -229,6 +269,7 @@
         grid-template-columns: 1fr 320px;
         grid-template-rows: auto 1fr auto;
         align-items:start;
+        overflow-y: hidden;
       }
 
       .view-wrap{
@@ -237,9 +278,27 @@
         align-self:center;
       }
 
+      /* Reset Map Panel to Grid Item on Desktop */
       .map-panel{
+        position: static;
+        top: auto;
+        left: auto;
+        right: auto;
+        height: auto;
+        pointer-events: auto;
         grid-column:2;
         grid-row:1;
+      }
+
+      #mapCanvas.hidden-mobile {
+        display: block !important; /* Always show map on desktop */
+        opacity: 1;
+        transform: scale(1);
+        pointer-events: auto;
+      }
+
+      #toggleMapBtn {
+        display: none; /* Hide toggle button on desktop */
       }
 
       .hud{
@@ -250,6 +309,10 @@
       .legend{
         grid-column:2;
         grid-row:3;
+      }
+      
+      .subcontrols {
+          grid-template-columns: 1fr; /* Stack buttons on sidebar */
       }
     }
   </style>
@@ -267,15 +330,11 @@
       </div>
 
       <div class="map-panel">
-        <canvas id="mapCanvas" width="640" height="640"></canvas>
+        <canvas id="mapCanvas" class="hidden-mobile" width="640" height="640"></canvas>
       </div>
 
       <div class="hud">
-        <div><b>Find the one exit door on the edge of the maze.</b></div>
-        <div>Tap doors in the 3D view to open/close them.</div>
-        <div style="margin-top:6px;">Move: swipe not required — use buttons or keyboard.</div>
-
-        <div class="controls" style="margin-top:12px;">
+        <div class="controls">
           <button data-action="turnLeft">↶</button>
           <button data-action="forward">▲</button>
           <button data-action="turnRight">↷</button>
@@ -285,14 +344,14 @@
         </div>
 
         <div class="subcontrols">
-          <button id="newGameBtn">New Game</button>
           <button id="openAheadBtn">Open Ahead</button>
+          <button id="toggleMapBtn">Show Map</button>
+          <button id="newGameBtn">New Game</button>
         </div>
       </div>
 
       <div class="legend">
-        Yellow = walls, brown = closed doors, green = open doors, cyan = exit door, red = you.<br>
-        Fog of war is always on.
+        Yellow=Walls, Brown=Doors, Green=Open, Cyan=Exit, Red=You.
       </div>
     </div>
   </div>
@@ -1103,6 +1162,7 @@
           else if (k === 'q' || k === 'arrowleft') GameState.turnLeft();
           else if (k === 'e' || k === 'arrowright') GameState.turnRight();
           else if (k === ' ') openDoorAhead();
+          else if (k === 'm') toggleMap();
           else return;
 
           refresh();
@@ -1130,12 +1190,20 @@
 
         document.getElementById('newGameBtn').addEventListener('click', startNewGame);
         document.getElementById('playAgainBtn').addEventListener('click', startNewGame);
+        document.getElementById('toggleMapBtn').addEventListener('click', toggleMap);
         document.getElementById('openAheadBtn').addEventListener('click', () => {
           openDoorAhead();
           refresh();
         });
       }
     };
+
+    function toggleMap() {
+        const map = document.getElementById('mapCanvas');
+        const btn = document.getElementById('toggleMapBtn');
+        const isHidden = map.classList.toggle('hidden-mobile');
+        btn.textContent = isHidden ? "Show Map" : "Hide Map";
+    }
 
     function openDoorAhead() {
       if (gameWon) return;
